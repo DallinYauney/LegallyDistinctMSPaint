@@ -12,6 +12,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("My App")
         button = QPushButton("Press Me!")
 
+        self.setFixedSize(QSize(400, 200))
+
+        # setCentralWidget() is used to place a widget
         self.setCentralWidget(button)
 
 
