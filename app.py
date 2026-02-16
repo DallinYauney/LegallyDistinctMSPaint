@@ -7,20 +7,20 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("My App")
+        self.button_is_checked = True
+
+        self.setWindowTitle("Legally Distinct MS Paint")
 
         button = QPushButton("Press me!")
         button.setCheckable(True)
-        button.clicked.connect(self.the_button_was_clicked)
         button.clicked.connect(self.the_button_was_toggled)
+        button.setChecked(self.button_is_checked)
 
         self.setCentralWidget(button)
 
-    def the_button_was_clicked(self):
-        print("ClIcKeD")
-
     def the_button_was_toggled(self, checked):
-        print("Checked?", checked)
+        self.button_is_checked = checked
+        print(self.button_is_checked)
 
 
 # sys.argv is passed in to be able to use command line arguments
