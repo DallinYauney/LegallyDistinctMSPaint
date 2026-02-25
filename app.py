@@ -11,15 +11,15 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Legally Distinct MS Paint")
 
-        button = QPushButton("Press me!")
-        button.setCheckable(True)
-        button.clicked.connect(self.the_button_was_toggled)
-        button.setChecked(self.button_is_checked)
+        self.button = QPushButton("Press me!")
+        self.button.setCheckable(True)
+        self.button.released.connect(self.the_button_was_released)
+        self.button.setChecked(self.button_is_checked)
 
-        self.setCentralWidget(button)
+        self.setCentralWidget(self.button)
 
-    def the_button_was_toggled(self, checked):
-        self.button_is_checked = checked
+    def the_button_was_released(self):
+        self.button_is_checked = self.button_is_checked
         print(self.button_is_checked)
 
 
