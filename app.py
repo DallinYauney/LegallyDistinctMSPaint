@@ -1,5 +1,9 @@
 # Copyright (C) 2022 The Qt Company Ltd.
 # SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
+
+# PainterWidget is the actual drawing surface
+# MainWindow has the toolbar, file handling and color picker
+
 from __future__ import annotations
 
 from PyQt6 import QtCore
@@ -28,6 +32,7 @@ from PyQt6.QtGui import (
 import sys
 
 
+# This is a custom widget it inherits from QWidget
 class PainterWidget(QWidget):
     """A widget where user can draw with their mouse
 
@@ -39,6 +44,9 @@ class PainterWidget(QWidget):
         super().__init__(parent)
 
         self.setFixedSize(680, 480)
+
+        # QPixmap is used to show images on screen
+        # QPixmap is a QPaintDevice subclass so QPainter can be used to draw directly onto pixmaps.
         self.pixmap = QPixmap(self.size())
         self.pixmap.fill(Qt.GlobalColor.white)
 
