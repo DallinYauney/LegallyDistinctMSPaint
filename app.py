@@ -1,36 +1,219 @@
+# Copyright (C) 2022 The Qt Company Ltd.
+# SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
+from __future__ import annotations
+
+from PyQt6 import QtCore
+
+from PyQt6.QtWidgets import (
+    QWidget,
+    QMainWindow,
+    QApplication,
+    QFileDialog,
+    QStyle,
+    QColorDialog,
+    QApplication,
+)
+from PyQt6.QtCore import Qt, pyqtSlot, QStandardPaths
+from PyQt6.QtGui import (
+    QMouseEvent,
+    QPaintEvent,
+    QPen,
+    QAction,
+    QPainter,
+    QColor,
+    QPixmap,
+    QIcon,
+    QKeySequence,
+)
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton
 
 
-# subclass QMainWindow
+class PainterWidget(QWidget):
+    """A widget where user can draw with their mouse
+
+    The user draws on a QPixmap which is itself paint from paintEvent()
+
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setFixedSize(680, 480)
+        self.pixmap = QPixmap(self.size())
+        self.pixmap.fill(Qt.GlobalColor.white)
+
+        self.previous_pos = None
+        self.painter = QPainter()
+        self.pen = QPen()
+        self.pen.setWidth(10)
+        self.pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        self.pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+    def paintEvent(self, event: QPaintEvent):
+        """Override method from QWidget
+
+        Paint the Pixmap into the widget
+
+        """
+        with QPainter(self) as painter:
+            painter.drawPixmap(0, 0, self.pixmap)
+
+    def mousePressEvent(self, event: QMouseEvent):
+        """Override from QWidget
+
+        Called when user clicks on the mouse
+
+        """
+        self.previous_pos = event.position().toPoint()
+        QWidget.mousePressEvent(self, event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """Override method from QWidget
+
+        Called when user moves and clicks on the mouse
+
+        """
+        current_pos = event.position().toPoint()
+        self.painter.begin(self.pixmap)
+        self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
+        self.painter.setPen(self.pen)
+        self.painter.drawLine(self.previous_pos, current_pos)
+        self.painter.end()
+
+        self.previous_pos = current_pos
+        self.update()
+
+        QWidget.mouseMoveEvent(self, event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """Override method from QWidget
+
+        Called when user releases the mouse
+
+        """
+        self.previous_pos = None
+        QWidget.mouseReleaseEvent(self, event)
+
+    def save(self, filename: str):
+        """save pixmap to filename"""
+        self.pixmap.save(filename)
+
+    def load(self, filename: str):
+        """load pixmap from filename"""
+        self.pixmap.load(filename)
+        self.pixmap = self.pixmap.scaled(
+            self.size(), Qt.AspectRatioMode.KeepAspectRatio
+        )
+        self.update()
+
+    def clear(self):
+        """Clear the pixmap"""
+        self.pixmap.fill(Qt.GlobalColor.white)
+        self.update()
+
+
 class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
+    """An Application example to draw using a pen"""
 
-        self.button_is_checked = True
+    def __init__(self, parent=None):
+        QMainWindow.__init__(self, parent)
 
-        self.setWindowTitle("Legally Distinct MS Paint")
+        self.painter_widget = PainterWidget()
+        self.bar = self.addToolBar("Menu")
+        self.bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._save_action = self.bar.addAction(
+            QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_DialogSaveButton
+            ),  # noqa: F821
+            "Save",
+            self.on_save,
+        )
+        self._save_action.setShortcut(QKeySequence.StandardKey.Save)
+        self._open_action = self.bar.addAction(
+            QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_DialogOpenButton
+            ),  # noqa: F821
+            "Open",
+            self.on_open,
+        )
+        self._open_action.setShortcut(QKeySequence.StandardKey.Open)
+        self.bar.addAction(
+            QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_DialogResetButton
+            ),  # noqa: F821
+            "Clear",
+            self.painter_widget.clear,
+        )
+        self.bar.addSeparator()
 
-        self.button = QPushButton("Press me!")
-        self.button.setCheckable(True)
-        self.button.released.connect(self.the_button_was_released)
-        self.button.setChecked(self.button_is_checked)
+        self.color_action = QAction(self)
+        self.color_action.triggered.connect(self.on_color_clicked)
+        self.bar.addAction(self.color_action)
 
-        self.setCentralWidget(self.button)
+        self.setCentralWidget(self.painter_widget)
 
-    def the_button_was_released(self):
-        self.button_is_checked = self.button_is_checked
-        print(self.button_is_checked)
+        self.color = Qt.GlobalColor.black
+        self.set_color(self.color)
+
+        self.mime_type_filters = ["image/png", "image/jpeg"]
+
+    @QtCore.pyqtSlot()
+    def on_save(self):
+
+        dialog = QFileDialog(self, "Save File")
+        dialog.setMimeTypeFilters(self.mime_type_filters)
+        dialog.setFileMode(QFileDialog.FileMode.AnyFile)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        dialog.setDefaultSuffix("png")
+        dialog.setDirectory(
+            QStandardPaths.writableLocation(
+                QStandardPaths.StandardLocation.PicturesLocation
+            )
+        )
+
+        if dialog.exec() == QFileDialog.DialogCode.Accepted:
+            if dialog.selectedFiles():
+                self.painter_widget.save(dialog.selectedFiles()[0])
+
+    @QtCore.pyqtSlot()
+    def on_open(self):
+
+        dialog = QFileDialog(self, "Save File")
+        dialog.setMimeTypeFilters(self.mime_type_filters)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        dialog.setDefaultSuffix("png")
+        dialog.setDirectory(
+            QStandardPaths.writableLocation(
+                QStandardPaths.StandardLocation.PicturesLocation
+            )
+        )
+
+        if dialog.exec() == QFileDialog.DialogCode.Accepted:
+            if dialog.selectedFiles():
+                self.painter_widget.load(dialog.selectedFiles()[0])
+
+    @QtCore.pyqtSlot()
+    def on_color_clicked(self):
+        if color := QColorDialog.getColor(self.color, self):
+            self.set_color(color)
+
+    def set_color(self, color: QColor = Qt.GlobalColor.black):
+
+        self.color = color
+        # Create color icon
+        pix_icon = QPixmap(32, 32)
+        pix_icon.fill(self.color)
+
+        self.color_action.setIcon(QIcon(pix_icon))
+        self.painter_widget.pen.setColor(self.color)
+        self.color_action.setText(QColor(self.color).name())
 
 
-# sys.argv is passed in to be able to use command line arguments
-app = QApplication(sys.argv)
+if __name__ == "__main__":
 
+    app = QApplication(sys.argv)
 
-# all windows are invisible by default so you must call .show()
-# all widgets can create windows
-window = MainWindow()
-window.show()
-
-# starts the event loop QApplication class holds the Qt event loop[]
-app.exec()
+    w = MainWindow()
+    w.show()
+    sys.exit(app.exec())
