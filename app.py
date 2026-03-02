@@ -43,7 +43,7 @@ class PainterWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setFixedSize(1300, 800)
+        self.setFixedSize(2000, 2000)
 
         # QPixmap is used to show images on screen
         # QPixmap is a QPaintDevice subclass so QPainter can be used to draw directly onto pixmaps.
@@ -135,6 +135,7 @@ class PainterContainer(QWidget):
         self.setMinimumSize(350, 350)
 
         self.painter = PainterWidget(self)
+        self.painter.move(-1000, -1000)
 
         self.prev_pos = None
         self.is_dragging = False
