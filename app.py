@@ -134,27 +134,36 @@ class PainterWidget(QWidget):
         self.update()
 
     def update_eraser_cursor(self):
+        # Grabs the size of the current pen and adds a bit of buffer
         size = self.pen.width() + 20
+        # Creates a pixmap based on size
         pixmap = QPixmap(size, size)
+        # Fill the pixmap with transparent
         pixmap.fill(Qt.GlobalColor.transparent)
-
+        # Make the painter so that we can draw on the pixmap
         painter = QPainter(pixmap)
+        # Turn on antialiasing so that its smooth
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
+        # Make a pen to draw on the pixmap with and make it black
         pen = QPen(Qt.GlobalColor.black)
+        # set the width of the pen to 1 for a small outline
         pen.setWidth(1)
+        # Tell the painter to use the pen we made
         painter.setPen(pen)
+        # Set the brush style as no brush so there will not be any fill
         painter.setBrush(Qt.BrushStyle.NoBrush)
-
+        # get the radius and center of the current pen used
         radius = self.pen.width() // 2
         center = size // 2
-
+        # Draw an ellipse on the pixmap using the radius and center of the current pen
         painter.drawEllipse(QtCore.QPoint(center, center), radius, radius)
         painter.end()
 
+        # Set the cursor as the pixmap we created and make the center based on the size of the pen
         cursor = QCursor(pixmap, center, center)
         self.setCursor(cursor)
 
+    # reset the cursor to normal
     def restore_cursor(self):
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
