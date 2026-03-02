@@ -86,15 +86,15 @@ class PainterWidget(QWidget):
         current_pos = event.position().toPoint()
         self.painter.begin(self.pixmap)
         self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
+        self.painter.setCompositionMode(
+            QPainter.CompositionMode.CompositionMode_SourceOver
+        )
 
         if self.eraser_mode:
-            self.painter.setCompositionMode(
-                QPainter.CompositionMode.CompositionMode_Clear
-            )
+            eraser_pen = QPen(self.pen)
+            eraser_pen.setColor(Qt.GlobalColor.white)
+            self.painter.setPen(eraser_pen)
         else:
-            self.painter.setCompositionMode(
-                QPainter.CompositionMode.CompositionMode_SourceOver
-            )
             self.painter.setPen(self.pen)
 
         self.painter.drawLine(self.previous_pos, current_pos)
