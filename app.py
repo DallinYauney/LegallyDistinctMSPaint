@@ -43,6 +43,8 @@ class PainterWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.eraser_mode = False
+
         self.setFixedSize(680, 480)
 
         # QPixmap is used to show images on screen
@@ -84,7 +86,17 @@ class PainterWidget(QWidget):
         current_pos = event.position().toPoint()
         self.painter.begin(self.pixmap)
         self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
-        self.painter.setPen(self.pen)
+
+        if self.eraser_mode:
+            self.painter.setCompositionMode(
+                QPainter.CompositionMode.CompositionMode_Clear
+            )
+        else:
+            self.painter.setCompositionMode(
+                QPainter.CompositionMode.CompositionMode_SourceOver
+            )
+            self.painter.setPen(self.pen)
+
         self.painter.drawLine(self.previous_pos, current_pos)
         self.painter.end()
 
@@ -152,6 +164,17 @@ class MainWindow(QMainWindow):
             "Clear",
             self.painter_widget.clear,
         )
+
+        self._eraser_action = self.bar.addAction(
+            QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_LineEditClearButton
+            ),
+            "Eraser",
+            self.toggle_eraser,
+        )
+        self._eraser_action.setCheckable(True)
+        self._eraser_action.setShortcut(QKeySequence("E"))
+
         self.bar.addSeparator()
 
         self.color_action = QAction(self)
@@ -216,6 +239,10 @@ class MainWindow(QMainWindow):
         self.color_action.setIcon(QIcon(pix_icon))
         self.painter_widget.pen.setColor(self.color)
         self.color_action.setText(QColor(self.color).name())
+
+    @QtCore.pyqtSlot()
+    def toggle_eraser(self):
+        self.painter_widget.eraser_mode = self._eraser_action.isChecked()
 
 
 if __name__ == "__main__":
