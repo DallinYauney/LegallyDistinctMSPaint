@@ -134,7 +134,7 @@ class PainterWidget(QWidget):
         self.update()
 
     def update_eraser_cursor(self):
-        size = self.pen.width()
+        size = self.pen.width() + 20
         pixmap = QPixmap(size, size)
         pixmap.fill(Qt.GlobalColor.transparent)
 
@@ -142,11 +142,11 @@ class PainterWidget(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         pen = QPen(Qt.GlobalColor.black)
-        pen.setWidth(self.pen.width())
+        pen.setWidth(1)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
-        radius = self.pen.width()
+        radius = self.pen.width() // 2
         center = size // 2
 
         painter.drawEllipse(QtCore.QPoint(center, center), radius, radius)
