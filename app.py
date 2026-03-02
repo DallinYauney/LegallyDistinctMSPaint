@@ -43,7 +43,7 @@ class PainterWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setFixedSize(680, 480)
+        self.setFixedSize(1300, 800)
 
         # QPixmap is used to show images on screen
         # QPixmap is a QPaintDevice subclass so QPainter can be used to draw directly onto pixmaps.
@@ -56,6 +56,8 @@ class PainterWidget(QWidget):
         self.pen.setWidth(10)
         self.pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         self.pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+        self.painting = False
 
     def paintEvent(self, event: QPaintEvent):
         """Override method from QWidget
@@ -72,7 +74,9 @@ class PainterWidget(QWidget):
         Called when user clicks on the mouse
 
         """
-        self.previous_pos = event.position().toPoint()
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.previous_pos = event.position().toPoint()
+            self.painting = True
         QWidget.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -81,15 +85,16 @@ class PainterWidget(QWidget):
         Called when user moves and clicks on the mouse
 
         """
-        current_pos = event.position().toPoint()
-        self.painter.begin(self.pixmap)
-        self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
-        self.painter.setPen(self.pen)
-        self.painter.drawLine(self.previous_pos, current_pos)
-        self.painter.end()
+        if self.painting:
+            current_pos = event.position().toPoint()
+            self.painter.begin(self.pixmap)
+            self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
+            self.painter.setPen(self.pen)
+            self.painter.drawLine(self.previous_pos, current_pos)
+            self.painter.end()
 
-        self.previous_pos = current_pos
-        self.update()
+            self.previous_pos = current_pos
+            self.update()
 
         QWidget.mouseMoveEvent(self, event)
 
@@ -99,7 +104,9 @@ class PainterWidget(QWidget):
         Called when user releases the mouse
 
         """
-        self.previous_pos = None
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.previous_pos = None
+            self.painting = False
         QWidget.mouseReleaseEvent(self, event)
 
     def save(self, filename: str):
@@ -119,6 +126,39 @@ class PainterWidget(QWidget):
         self.pixmap.fill(Qt.GlobalColor.white)
         self.update()
 
+class PainterContainer(QWidget):
+    """
+    Widget to hold the PainterWidget and move it around
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(350, 350)
+
+        self.painter = PainterWidget(self)
+
+        self.prev_pos = None
+        self.is_dragging = False
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.is_dragging = True
+            self.prev_pos = event.position().toPoint()
+        return super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.is_dragging:
+            current_pos = event.position().toPoint()
+            delta = current_pos - self.prev_pos
+            new_pos = self.painter.pos() + delta
+            self.painter.move(new_pos)
+            self.prev_pos = current_pos
+        return super().mouseMoveEvent(event)
+    
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.is_dragging = False
+            self.prev_pos = None
+        return super().mouseReleaseEvent(event)
 
 class MainWindow(QMainWindow):
     """An Application example to draw using a pen"""
@@ -126,7 +166,8 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
 
-        self.painter_widget = PainterWidget()
+        self.painter_holder = PainterContainer()
+
         self.bar = self.addToolBar("Menu")
         self.bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self._save_action = self.bar.addAction(
@@ -150,7 +191,7 @@ class MainWindow(QMainWindow):
                 QStyle.StandardPixmap.SP_DialogResetButton
             ),  # noqa: F821
             "Clear",
-            self.painter_widget.clear,
+            self.painter_holder.painter.clear,
         )
         self.bar.addSeparator()
 
@@ -158,7 +199,7 @@ class MainWindow(QMainWindow):
         self.color_action.triggered.connect(self.on_color_clicked)
         self.bar.addAction(self.color_action)
 
-        self.setCentralWidget(self.painter_widget)
+        self.setCentralWidget(self.painter_holder)
 
         self.color = Qt.GlobalColor.black
         self.set_color(self.color)
@@ -214,7 +255,7 @@ class MainWindow(QMainWindow):
         pix_icon.fill(self.color)
 
         self.color_action.setIcon(QIcon(pix_icon))
-        self.painter_widget.pen.setColor(self.color)
+        self.painter_holder.painter.pen.setColor(self.color)
         self.color_action.setText(QColor(self.color).name())
 
 
