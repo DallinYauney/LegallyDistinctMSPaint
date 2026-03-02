@@ -28,6 +28,7 @@ from PyQt6.QtGui import (
     QPixmap,
     QIcon,
     QKeySequence,
+    QCursor,
 )
 import sys
 
@@ -93,6 +94,7 @@ class PainterWidget(QWidget):
         if self.eraser_mode:
             eraser_pen = QPen(self.pen)
             eraser_pen.setColor(Qt.GlobalColor.white)
+            eraser_pen.setCapStyle
             self.painter.setPen(eraser_pen)
         else:
             self.painter.setPen(self.pen)
@@ -130,6 +132,31 @@ class PainterWidget(QWidget):
         """Clear the pixmap"""
         self.pixmap.fill(Qt.GlobalColor.white)
         self.update()
+
+    def update_eraser_cursor(self):
+        size = self.pen.width()
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        pen = QPen(Qt.GlobalColor.black)
+        pen.setWidth(self.pen.width())
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+        radius = self.pen.width()
+        center = size // 2
+
+        painter.drawEllipse(QtCore.QPoint(center, center), radius, radius)
+        painter.end()
+
+        cursor = QCursor(pixmap, center, center)
+        self.setCursor(cursor)
+
+    def restore_cursor(self):
+        self.setCursor(Qt.CursorShape.ArrowCursor)
 
 
 class MainWindow(QMainWindow):
@@ -243,6 +270,11 @@ class MainWindow(QMainWindow):
     @QtCore.pyqtSlot()
     def toggle_eraser(self):
         self.painter_widget.eraser_mode = self._eraser_action.isChecked()
+
+        if self.painter_widget.eraser_mode:
+            self.painter_widget.update_eraser_cursor()
+        else:
+            self.painter_widget.restore_cursor()
 
 
 if __name__ == "__main__":
