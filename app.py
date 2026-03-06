@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSlot, QStandardPaths
 from PyQt6.QtGui import (
     QMouseEvent,
+    QKeyEvent,
     QPaintEvent,
     QPen,
     QAction,
@@ -109,7 +110,7 @@ class PainterWidget(QWidget):
             self.previous_pos = None
             self.painting = False
         QWidget.mouseReleaseEvent(self, event)
-
+    
     def save(self, filename: str):
         """save pixmap to filename"""
         self.pixmap.save(filename)
@@ -140,16 +141,41 @@ class PainterContainer(QWidget):
         self.painter.move(-displacement, -displacement)
 
         self.prev_pos = None
-        self.is_dragging = False
-
+        self.left_mouse = False
+        self.middle_mouse = False
+        self.right_mouse = False
+        self.spacebar = False
+        self.drag_button = False
+    
+    def toggle_pan(self):
+        # print(f"Toggling from {self.is_dragging}")
+        self.drag_button = not self.drag_button
+    
+    def is_panning(self):
+        # print(f"{self.spacebar}")
+        return (
+            self.middle_mouse or
+            (self.left_mouse and self.drag_button) or
+            (self.left_mouse and self.spacebar)
+        )
+    
     def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.MiddleButton:
+        match event.button():
+            case Qt.MouseButton.MiddleButton:
+                self.middle_mouse = True
+            case Qt.MouseButton.LeftButton:
+                self.left_mouse = True
+            case Qt.MouseButton.RightButton:
+                self.right_mouse = True
+        
+        
+        if self.is_panning():
             self.is_dragging = True
             self.prev_pos = event.position().toPoint()
         return super().mousePressEvent(event)
     
     def mouseMoveEvent(self, event: QMouseEvent):
-        if self.is_dragging:
+        if self.is_panning():
             current_pos = event.position().toPoint()
             delta = current_pos - self.prev_pos
             new_pos = self.painter.pos() + delta
@@ -158,10 +184,30 @@ class PainterContainer(QWidget):
         return super().mouseMoveEvent(event)
     
     def mouseReleaseEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.MiddleButton:
-            self.is_dragging = False
+        match event.button():
+            case Qt.MouseButton.MiddleButton:
+                self.middle_mouse = False
+            case Qt.MouseButton.LeftButton:
+                self.left_mouse = False
+            case Qt.MouseButton.RightButton:
+                self.right_mouse = False
+        
+        if not self.is_panning():
             self.prev_pos = None
+
         return super().mouseReleaseEvent(event)
+    
+    def keyPressEvent(self, event: QKeyEvent):
+        print(f"Key pressed - {event.key()}")
+        if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
+            self.spacebar = True
+        return super().keyPressEvent(event)
+    
+    def keyReleaseEvent(self, event: QKeyEvent):
+        if event.key == Qt.Key.Key_Space:
+            self.spacebar = False
+        return super().keyReleaseEvent(event)
+
 
 class MainWindow(QMainWindow):
     """An Application example to draw using a pen"""
@@ -196,6 +242,15 @@ class MainWindow(QMainWindow):
             "Clear",
             self.painter_holder.painter.clear,
         )
+        self._pan_action = self.bar.addAction(
+            QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_FileDialogListView
+            ),  # noqa: F821
+            "Pan",
+            self.painter_holder.toggle_pan,
+        )
+        self._pan_action.setCheckable(True)
+
         self.bar.addSeparator()
 
         self.color_action = QAction(self)
