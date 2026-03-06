@@ -60,6 +60,7 @@ class PainterWidget(QWidget):
         self.pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
 
         self.painting = False
+        self.painting_mode = True
 
     def paintEvent(self, event: QPaintEvent):
         """Override method from QWidget
@@ -76,7 +77,7 @@ class PainterWidget(QWidget):
         Called when user clicks on the mouse
 
         """
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton and self.painting_mode:
             self.previous_pos = event.position().toPoint()
             self.painting = True
         QWidget.mousePressEvent(self, event)
@@ -135,6 +136,7 @@ class PainterContainer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(350, 350)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.painter = PainterWidget(self)
         displacement = CANVAS_SIZE // 2
@@ -150,6 +152,7 @@ class PainterContainer(QWidget):
     def toggle_pan(self):
         # print(f"Toggling from {self.is_dragging}")
         self.drag_button = not self.drag_button
+        self.painter.painting_mode = not self.painter.painting_mode
     
     def is_panning(self):
         # print(f"{self.spacebar}")
@@ -198,14 +201,15 @@ class PainterContainer(QWidget):
         return super().mouseReleaseEvent(event)
     
     def keyPressEvent(self, event: QKeyEvent):
-        print(f"Key pressed - {event.key()}")
         if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
             self.spacebar = True
+            self.painter.painting_mode = False
         return super().keyPressEvent(event)
     
     def keyReleaseEvent(self, event: QKeyEvent):
         if event.key == Qt.Key.Key_Space:
             self.spacebar = False
+            self.painter.painting_mode = True
         return super().keyReleaseEvent(event)
 
 
