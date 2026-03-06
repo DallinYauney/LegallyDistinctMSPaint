@@ -21,6 +21,8 @@ from PyQt6.QtCore import Qt, pyqtSlot, QStandardPaths
 from PyQt6.QtGui import (
     QMouseEvent,
     QKeyEvent,
+    QWheelEvent,
+    QInputDevice,
     QPaintEvent,
     QPen,
     QAction,
@@ -179,8 +181,7 @@ class PainterContainer(QWidget):
         if self.is_panning():
             current_pos = event.position().toPoint()
             delta = current_pos - self.prev_pos
-            new_pos = self.painter.pos() + delta
-            self.painter.move(new_pos)
+            self.pan(delta)
             self.prev_pos = current_pos
         return super().mouseMoveEvent(event)
     
@@ -209,6 +210,20 @@ class PainterContainer(QWidget):
             self.spacebar = False
             self.painter.painting_mode = True
         return super().keyReleaseEvent(event)
+    
+    def wheelEvent(self, event: QWheelEvent):
+
+        # I only want to pan if the scroll is from a trackpad.
+        # Curiously, scrolling with my mouse doesn't return a pixelDelta
+        # anyways (and filtering by event.device() == trackpad doesn't
+        # seem to work in the first place).
+        self.pan(event.pixelDelta())
+
+        return super().wheelEvent(event)
+    
+    def pan(self, delta):
+        new_pos = self.painter.pos() + delta
+        self.painter.move(new_pos)
 
 
 class MainWindow(QMainWindow):
