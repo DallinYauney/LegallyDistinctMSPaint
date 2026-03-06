@@ -150,12 +150,10 @@ class PainterContainer(QWidget):
         self.drag_button = False
     
     def toggle_pan(self):
-        # print(f"Toggling from {self.is_dragging}")
         self.drag_button = not self.drag_button
         self.painter.painting_mode = not self.painter.painting_mode
     
     def is_panning(self):
-        # print(f"{self.spacebar}")
         return (
             self.middle_mouse or
             (self.left_mouse and self.drag_button) or
