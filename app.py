@@ -297,7 +297,7 @@ class MainWindow(QMainWindow):
 
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
             if dialog.selectedFiles():
-                self.painter_widget.save(dialog.selectedFiles()[0])
+                self.painter_holder.painter.save(dialog.selectedFiles()[0])
 
     @QtCore.pyqtSlot()
     def on_open(self):
@@ -315,7 +315,7 @@ class MainWindow(QMainWindow):
 
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
             if dialog.selectedFiles():
-                self.painter_widget.load(dialog.selectedFiles()[0])
+                self.painter_holder.painter.load(dialog.selectedFiles()[0])
 
     @QtCore.pyqtSlot()
     def on_color_clicked(self):
