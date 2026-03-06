@@ -205,7 +205,7 @@ class PainterContainer(QWidget):
         return super().keyPressEvent(event)
     
     def keyReleaseEvent(self, event: QKeyEvent):
-        if event.key == Qt.Key.Key_Space:
+        if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
             self.spacebar = False
             self.painter.painting_mode = True
         return super().keyReleaseEvent(event)
