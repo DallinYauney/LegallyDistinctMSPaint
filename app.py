@@ -20,6 +20,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSlot, QStandardPaths
 from PyQt6.QtGui import (
     QMouseEvent,
+    QKeyEvent,
+    QWheelEvent,
+    QInputDevice,
     QPaintEvent,
     QPen,
     QAction,
@@ -31,6 +34,7 @@ from PyQt6.QtGui import (
 )
 import sys
 
+CANVAS_SIZE = 4000
 
 # This is a custom widget it inherits from QWidget
 class PainterWidget(QWidget):
@@ -43,7 +47,7 @@ class PainterWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setFixedSize(680, 480)
+        self.setFixedSize(CANVAS_SIZE, CANVAS_SIZE)
 
         # QPixmap is used to show images on screen
         # QPixmap is a QPaintDevice subclass so QPainter can be used to draw directly onto pixmaps.
@@ -56,6 +60,9 @@ class PainterWidget(QWidget):
         self.pen.setWidth(10)
         self.pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         self.pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+        self.painting = False
+        self.painting_mode = True
 
     def paintEvent(self, event: QPaintEvent):
         """Override method from QWidget
@@ -72,7 +79,9 @@ class PainterWidget(QWidget):
         Called when user clicks on the mouse
 
         """
-        self.previous_pos = event.position().toPoint()
+        if event.button() == Qt.MouseButton.LeftButton and self.painting_mode:
+            self.previous_pos = event.position().toPoint()
+            self.painting = True
         QWidget.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -81,15 +90,16 @@ class PainterWidget(QWidget):
         Called when user moves and clicks on the mouse
 
         """
-        current_pos = event.position().toPoint()
-        self.painter.begin(self.pixmap)
-        self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
-        self.painter.setPen(self.pen)
-        self.painter.drawLine(self.previous_pos, current_pos)
-        self.painter.end()
+        if self.painting:
+            current_pos = event.position().toPoint()
+            self.painter.begin(self.pixmap)
+            self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
+            self.painter.setPen(self.pen)
+            self.painter.drawLine(self.previous_pos, current_pos)
+            self.painter.end()
 
-        self.previous_pos = current_pos
-        self.update()
+            self.previous_pos = current_pos
+            self.update()
 
         QWidget.mouseMoveEvent(self, event)
 
@@ -99,9 +109,11 @@ class PainterWidget(QWidget):
         Called when user releases the mouse
 
         """
-        self.previous_pos = None
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.previous_pos = None
+            self.painting = False
         QWidget.mouseReleaseEvent(self, event)
-
+    
     def save(self, filename: str):
         """save pixmap to filename"""
         self.pixmap.save(filename)
@@ -119,6 +131,100 @@ class PainterWidget(QWidget):
         self.pixmap.fill(Qt.GlobalColor.white)
         self.update()
 
+class PainterContainer(QWidget):
+    """
+    Widget to hold the PainterWidget and move it around
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(350, 350)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+        self.painter = PainterWidget(self)
+        displacement = CANVAS_SIZE // 2
+        self.painter.move(-displacement, -displacement)
+
+        self.prev_pos = None
+        self.left_mouse = False
+        self.middle_mouse = False
+        self.right_mouse = False
+        self.spacebar = False
+        self.drag_button = False
+    
+    def toggle_pan(self):
+        self.drag_button = not self.drag_button
+        self.painter.painting_mode = not self.painter.painting_mode
+    
+    def is_panning(self):
+        return (
+            self.middle_mouse or
+            (self.left_mouse and self.drag_button) or
+            (self.left_mouse and self.spacebar)
+        )
+    
+    def mousePressEvent(self, event: QMouseEvent):
+        match event.button():
+            case Qt.MouseButton.MiddleButton:
+                self.middle_mouse = True
+            case Qt.MouseButton.LeftButton:
+                self.left_mouse = True
+            case Qt.MouseButton.RightButton:
+                self.right_mouse = True
+        
+        
+        if self.is_panning():
+            self.is_dragging = True
+            self.prev_pos = event.position().toPoint()
+        return super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.is_panning():
+            current_pos = event.position().toPoint()
+            delta = current_pos - self.prev_pos
+            self.pan(delta)
+            self.prev_pos = current_pos
+        return super().mouseMoveEvent(event)
+    
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        match event.button():
+            case Qt.MouseButton.MiddleButton:
+                self.middle_mouse = False
+            case Qt.MouseButton.LeftButton:
+                self.left_mouse = False
+            case Qt.MouseButton.RightButton:
+                self.right_mouse = False
+        
+        if not self.is_panning():
+            self.prev_pos = None
+
+        return super().mouseReleaseEvent(event)
+    
+    def keyPressEvent(self, event: QKeyEvent):
+        if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
+            self.spacebar = True
+            self.painter.painting_mode = False
+        return super().keyPressEvent(event)
+    
+    def keyReleaseEvent(self, event: QKeyEvent):
+        if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
+            self.spacebar = False
+            self.painter.painting_mode = True
+        return super().keyReleaseEvent(event)
+    
+    def wheelEvent(self, event: QWheelEvent):
+
+        # I only want to pan if the scroll is from a trackpad.
+        # Curiously, scrolling with my mouse doesn't return a pixelDelta
+        # anyways (and filtering by event.device() == trackpad doesn't
+        # seem to work in the first place).
+        self.pan(event.pixelDelta())
+
+        return super().wheelEvent(event)
+    
+    def pan(self, delta):
+        new_pos = self.painter.pos() + delta
+        self.painter.move(new_pos)
+
 
 class MainWindow(QMainWindow):
     """An Application example to draw using a pen"""
@@ -126,7 +232,8 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
 
-        self.painter_widget = PainterWidget()
+        self.painter_holder = PainterContainer()
+
         self.bar = self.addToolBar("Menu")
         self.bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self._save_action = self.bar.addAction(
@@ -150,15 +257,24 @@ class MainWindow(QMainWindow):
                 QStyle.StandardPixmap.SP_DialogResetButton
             ),  # noqa: F821
             "Clear",
-            self.painter_widget.clear,
+            self.painter_holder.painter.clear,
         )
+        self._pan_action = self.bar.addAction(
+            QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_FileDialogListView
+            ),  # noqa: F821
+            "Pan",
+            self.painter_holder.toggle_pan,
+        )
+        self._pan_action.setCheckable(True)
+
         self.bar.addSeparator()
 
         self.color_action = QAction(self)
         self.color_action.triggered.connect(self.on_color_clicked)
         self.bar.addAction(self.color_action)
 
-        self.setCentralWidget(self.painter_widget)
+        self.setCentralWidget(self.painter_holder)
 
         self.color = Qt.GlobalColor.black
         self.set_color(self.color)
@@ -181,7 +297,7 @@ class MainWindow(QMainWindow):
 
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
             if dialog.selectedFiles():
-                self.painter_widget.save(dialog.selectedFiles()[0])
+                self.painter_holder.painter.save(dialog.selectedFiles()[0])
 
     @QtCore.pyqtSlot()
     def on_open(self):
@@ -199,7 +315,7 @@ class MainWindow(QMainWindow):
 
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
             if dialog.selectedFiles():
-                self.painter_widget.load(dialog.selectedFiles()[0])
+                self.painter_holder.painter.load(dialog.selectedFiles()[0])
 
     @QtCore.pyqtSlot()
     def on_color_clicked(self):
@@ -214,7 +330,7 @@ class MainWindow(QMainWindow):
         pix_icon.fill(self.color)
 
         self.color_action.setIcon(QIcon(pix_icon))
-        self.painter_widget.pen.setColor(self.color)
+        self.painter_holder.painter.pen.setColor(self.color)
         self.color_action.setText(QColor(self.color).name())
 
 
