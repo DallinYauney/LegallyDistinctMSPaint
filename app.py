@@ -67,32 +67,32 @@ class PainterWidget(QWidget):
         self.painting_mode = True
 
     def paintEvent(self, event: QPaintEvent):
-        # Added this to be able to get method suggestions
-        # from the painter class
-        # painter: QPainter = QPainter(self)
         """Override method from QWidget
 
         Paint the Pixmap into the widget
 
         """
+        # Drawing text immediately from example
+        painter = QPainter(self.pixmap)
+        font = painter.font()
+        font.setPixelSize(48)
+        painter.setFont(font)
+
+        rectangle = QRect(0, 0, 100, 50)
+        bounding_rect = painter.drawText(rectangle, 0, "THIS IS TEXT")
+        pen = painter.pen()
+        pen.setStyle(Qt.PenStyle.DotLine)
+        painter.setPen(pen)
+        painter.drawRect(bounding_rect.adjusted(0, 0, -pen.width(), -pen.width()))
+
+        pen.setStyle(Qt.PenStyle.DashLine)
+        painter.setPen(pen)
+        painter.drawRect(rectangle.adjusted(0, 0, -pen.width(), -pen.width()))
+
+        painter.end()
+
         with QPainter(self) as painter:
             painter.drawPixmap(0, 0, self.pixmap)
-
-            # Drawing text immediately from example
-            font = painter.font()
-            font.setPixelSize(12)
-            painter.setFont(font)
-
-            rectangle = QRect(0, 0, 100, 50)
-            bounding_rect = painter.drawText(rectangle, 0, "THIS IS TEXT")
-            pen = painter.pen()
-            pen.setStyle(Qt.PenStyle.DotLine)
-            painter.setPen(pen)
-            painter.drawRect(bounding_rect.adjusted(0, 0, -pen.width(), -pen.width()))
-
-            pen.setStyle(Qt.PenStyle.DashLine)
-            painter.setPen(pen)
-            painter.drawRect(rectangle.adjusted(0, 0, -pen.width(), -pen.width()))
 
     def mousePressEvent(self, event: QMouseEvent):
         """Override from QWidget
