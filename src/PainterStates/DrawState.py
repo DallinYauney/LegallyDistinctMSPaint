@@ -21,6 +21,8 @@ class DrawState:
         self.is_panning = False
         self.is_erasing = False
 
+        # self.controller.parent.bar._draw_action.setHidden(True)
+
     def mouse_down(self, event: QMouseEvent):
         # print("Clicked while drawing")
         match event.button():

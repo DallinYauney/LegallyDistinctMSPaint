@@ -29,6 +29,9 @@ class PanState:
         self.can_graduate = transiency == 1
         self.is_panning = transiency > 0
 
+        # self.controller.parent._pan_action.setCheckable(True)
+        # self.controller.parent._pan_action.setChecked(True)
+
     def mouse_down(self, event: QMouseEvent):
         match event.button():
             case Qt.MouseButton.LeftButton:

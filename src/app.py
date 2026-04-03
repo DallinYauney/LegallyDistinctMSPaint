@@ -158,6 +158,7 @@ class PainterWidget(QWidget):
 class PainterController(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self.setMinimumSize(350, 350)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -167,10 +168,12 @@ class PainterController(QWidget):
         self.inputs = InputTracker()
         # self.state = DrawState(self, self.inputs, 0)
         self.state = DrawState(self, self.inputs, 0)
-        self.state_history = []
+        # self.state_history = []
+        self.state_history = [DrawState]
         # self.change_state(DrawState)
     
-    
+
+    ### ### INPUT PLUMBING ### ###
     def mousePressEvent(self, event: QMouseEvent):
         self.state.mouse_down(event)
 
@@ -203,14 +206,32 @@ class PainterController(QWidget):
         self.state.scroll(event)
         return super().wheelEvent(event)
 
-    
+
+    ### ### STATE MANAGEMENT ### ###
     def change_state(self, target_state, transiency=0):
-        self.state_history.append(self.state)
+        # self.set_button_checked(self.state_history[-1], target_state)
+        self.set_button_checked(target_state)
+        self.state_history.append(target_state)
         self.state = target_state(self, self.inputs, transiency)
     
     def revert_state(self):
         # print("Reverting state with list", self.state_history)
-        self.state = self.state_history.pop()
+        # old_state = self.state
+        # new_state = self.state_history.pop()
+        self.state_history.pop()
+        new_state = self.state_history[-1]
+        self.state = new_state(self, self.inputs, 0)
+        # self.set_button_checked(old_state, self.state)
+        self.set_button_checked(new_state)
+    
+    def set_button_checked(self, target_state):
+        for button in self.parent.state_buttons.values():
+            button.setChecked(False)
+        # print(f"{from_state} to {to_state}")
+        # self.parent.state_buttons[from_state].setChecked(False)
+        # self.parent.state_buttons[to_state].setChecked(True)
+        self.parent.state_buttons[target_state].setChecked(True)
+
 
     def button_set_state(self, target_state):
         def inner():
@@ -219,8 +240,8 @@ class PainterController(QWidget):
         return inner
     
 
-    
-
+    ### ### ACTUAL FUNCTIONALITY ### ###
+    # probably move this to PainterWidget eventually lol
     def pan(self, delta: QPoint):
         new_pos = self.painter.pos() + delta
         self.painter.move(new_pos)
@@ -254,99 +275,99 @@ class PainterController(QWidget):
 
 
 
-class PainterContainer(QWidget):
-    """
-    Widget to hold the PainterWidget and move it around
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setMinimumSize(350, 350)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+# class PainterContainer(QWidget):
+#     """
+#     Widget to hold the PainterWidget and move it around
+#     """
+#     def __init__(self, parent=None):
+#         super().__init__(parent)
+#         self.setMinimumSize(350, 350)
+#         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-        self.painter = PainterWidget(self)
-        displacement = CANVAS_SIZE // 2
-        self.painter.move(-displacement, -displacement)
+#         self.painter = PainterWidget(self)
+#         displacement = CANVAS_SIZE // 2
+#         self.painter.move(-displacement, -displacement)
 
-        self.prev_pos = None
-        self.left_mouse = False
-        self.middle_mouse = False
-        self.right_mouse = False
-        self.spacebar = False
-        self.drag_button = False
+#         self.prev_pos = None
+#         self.left_mouse = False
+#         self.middle_mouse = False
+#         self.right_mouse = False
+#         self.spacebar = False
+#         self.drag_button = False
     
-    def toggle_pan(self):
-        self.drag_button = not self.drag_button
-        self.painter.painting_mode = not self.painter.painting_mode
+#     def toggle_pan(self):
+#         self.drag_button = not self.drag_button
+#         self.painter.painting_mode = not self.painter.painting_mode
     
-    def is_panning(self):
-        return (
-            self.middle_mouse or
-            (self.left_mouse and self.drag_button) or
-            (self.left_mouse and self.spacebar)
-        )
+#     def is_panning(self):
+#         return (
+#             self.middle_mouse or
+#             (self.left_mouse and self.drag_button) or
+#             (self.left_mouse and self.spacebar)
+#         )
     
-    def mousePressEvent(self, event: QMouseEvent):
-        match event.button():
-            case Qt.MouseButton.MiddleButton:
-                self.middle_mouse = True
-            case Qt.MouseButton.LeftButton:
-                self.left_mouse = True
-            case Qt.MouseButton.RightButton:
-                self.right_mouse = True
+#     def mousePressEvent(self, event: QMouseEvent):
+#         match event.button():
+#             case Qt.MouseButton.MiddleButton:
+#                 self.middle_mouse = True
+#             case Qt.MouseButton.LeftButton:
+#                 self.left_mouse = True
+#             case Qt.MouseButton.RightButton:
+#                 self.right_mouse = True
         
         
-        if self.is_panning():
-            self.is_dragging = True
-            self.prev_pos = event.position().toPoint()
-        return super().mousePressEvent(event)
+#         if self.is_panning():
+#             self.is_dragging = True
+#             self.prev_pos = event.position().toPoint()
+#         return super().mousePressEvent(event)
     
-    def mouseMoveEvent(self, event: QMouseEvent):
-        if self.is_panning():
-            current_pos = event.position().toPoint()
-            delta = current_pos - self.prev_pos
-            self.pan(delta)
-            self.prev_pos = current_pos
-        return super().mouseMoveEvent(event)
+#     def mouseMoveEvent(self, event: QMouseEvent):
+#         if self.is_panning():
+#             current_pos = event.position().toPoint()
+#             delta = current_pos - self.prev_pos
+#             self.pan(delta)
+#             self.prev_pos = current_pos
+#         return super().mouseMoveEvent(event)
     
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        match event.button():
-            case Qt.MouseButton.MiddleButton:
-                self.middle_mouse = False
-            case Qt.MouseButton.LeftButton:
-                self.left_mouse = False
-            case Qt.MouseButton.RightButton:
-                self.right_mouse = False
+#     def mouseReleaseEvent(self, event: QMouseEvent):
+#         match event.button():
+#             case Qt.MouseButton.MiddleButton:
+#                 self.middle_mouse = False
+#             case Qt.MouseButton.LeftButton:
+#                 self.left_mouse = False
+#             case Qt.MouseButton.RightButton:
+#                 self.right_mouse = False
         
-        if not self.is_panning():
-            self.prev_pos = None
+#         if not self.is_panning():
+#             self.prev_pos = None
 
-        return super().mouseReleaseEvent(event)
+#         return super().mouseReleaseEvent(event)
     
-    def keyPressEvent(self, event: QKeyEvent):
-        if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
-            self.spacebar = True
-            self.painter.painting_mode = False
-        return super().keyPressEvent(event)
+#     def keyPressEvent(self, event: QKeyEvent):
+#         if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
+#             self.spacebar = True
+#             self.painter.painting_mode = False
+#         return super().keyPressEvent(event)
     
-    def keyReleaseEvent(self, event: QKeyEvent):
-        if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
-            self.spacebar = False
-            self.painter.painting_mode = True
-        return super().keyReleaseEvent(event)
+#     def keyReleaseEvent(self, event: QKeyEvent):
+#         if (event.key() == Qt.Key.Key_Space) and not event.isAutoRepeat():
+#             self.spacebar = False
+#             self.painter.painting_mode = True
+#         return super().keyReleaseEvent(event)
     
-    def wheelEvent(self, event: QWheelEvent):
+#     def wheelEvent(self, event: QWheelEvent):
 
-        # I only want to pan if the scroll is from a trackpad.
-        # Curiously, scrolling with my mouse doesn't return a pixelDelta
-        # anyways (and filtering by event.device() == trackpad doesn't
-        # seem to work in the first place).
-        self.pan(event.pixelDelta())
+#         # I only want to pan if the scroll is from a trackpad.
+#         # Curiously, scrolling with my mouse doesn't return a pixelDelta
+#         # anyways (and filtering by event.device() == trackpad doesn't
+#         # seem to work in the first place).
+#         self.pan(event.pixelDelta())
 
-        return super().wheelEvent(event)
+#         return super().wheelEvent(event)
     
-    def pan(self, delta):
-        new_pos = self.painter.pos() + delta
-        self.painter.move(new_pos)
+#     def pan(self, delta):
+#         new_pos = self.painter.pos() + delta
+#         self.painter.move(new_pos)
 
 
 class MainWindow(QMainWindow):
@@ -387,7 +408,18 @@ class MainWindow(QMainWindow):
         
         self.bar.addSeparator()
 
-        self._pan_action = self.bar.addAction(
+        self.state_buttons = {}
+
+        self.state_buttons[DrawState] = self.bar.addAction(
+            QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_DialogOkButton
+            ),  # noqa: F821
+            "Draw",
+            self.painter_holder.button_set_state(DrawState),
+        )
+
+        # self._pan_action = self.bar.addAction(
+        self.state_buttons[PanState] = self.bar.addAction(
             QApplication.style().standardIcon(
                 QStyle.StandardPixmap.SP_FileDialogListView
             ),  # noqa: F821
@@ -408,6 +440,10 @@ class MainWindow(QMainWindow):
         self.set_color(self.color)
 
         self.mime_type_filters = ["image/png", "image/jpeg"]
+
+        for action in self.state_buttons.values():
+            action.setCheckable(True)
+        self.state_buttons[DrawState].setChecked(True)
 
     @QtCore.pyqtSlot()
     def on_save(self):
