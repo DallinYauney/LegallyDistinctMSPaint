@@ -17,7 +17,12 @@ from PyQt6.QtWidgets import (
     QColorDialog,
     QApplication,
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QStandardPaths
+from PyQt6.QtCore import (
+    Qt,
+    pyqtSlot,
+    QStandardPaths,
+    QPoint,
+)
 from PyQt6.QtGui import (
     QMouseEvent,
     QKeyEvent,
@@ -33,8 +38,9 @@ from PyQt6.QtGui import (
     QKeySequence,
 )
 import sys
+from PainterStates import DrawState, PanState, InputTracker
 
-CANVAS_SIZE = 4000
+CANVAS_SIZE = 500
 
 # This is a custom widget it inherits from QWidget
 class PainterWidget(QWidget):
@@ -61,8 +67,8 @@ class PainterWidget(QWidget):
         self.pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         self.pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
 
-        self.painting = False
-        self.painting_mode = True
+        # self.painting = False
+        # self.painting_mode = True
 
     def paintEvent(self, event: QPaintEvent):
         """Override method from QWidget
@@ -73,46 +79,46 @@ class PainterWidget(QWidget):
         with QPainter(self) as painter:
             painter.drawPixmap(0, 0, self.pixmap)
 
-    def mousePressEvent(self, event: QMouseEvent):
-        """Override from QWidget
+    # def mousePressEvent(self, event: QMouseEvent):
+    #     """Override from QWidget
 
-        Called when user clicks on the mouse
+    #     Called when user clicks on the mouse
 
-        """
-        if event.button() == Qt.MouseButton.LeftButton and self.painting_mode:
-            self.previous_pos = event.position().toPoint()
-            self.painting = True
-        QWidget.mousePressEvent(self, event)
+    #     """
+    #     if event.button() == Qt.MouseButton.LeftButton and self.painting_mode:
+    #         self.previous_pos = event.position().toPoint()
+    #         self.painting = True
+    #     QWidget.mousePressEvent(self, event)
 
-    def mouseMoveEvent(self, event: QMouseEvent):
-        """Override method from QWidget
+    # def mouseMoveEvent(self, event: QMouseEvent):
+    #     """Override method from QWidget
 
-        Called when user moves and clicks on the mouse
+    #     Called when user moves and clicks on the mouse
 
-        """
-        if self.painting:
-            current_pos = event.position().toPoint()
-            self.painter.begin(self.pixmap)
-            self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
-            self.painter.setPen(self.pen)
-            self.painter.drawLine(self.previous_pos, current_pos)
-            self.painter.end()
+    #     """
+    #     if self.painting:
+    #         current_pos = event.position().toPoint()
+    #         self.painter.begin(self.pixmap)
+    #         self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
+    #         self.painter.setPen(self.pen)
+    #         self.painter.drawLine(self.previous_pos, current_pos)
+    #         self.painter.end()
 
-            self.previous_pos = current_pos
-            self.update()
+    #         self.previous_pos = current_pos
+    #         self.update()
 
-        QWidget.mouseMoveEvent(self, event)
+    #     QWidget.mouseMoveEvent(self, event)
 
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        """Override method from QWidget
+    # def mouseReleaseEvent(self, event: QMouseEvent):
+    #     """Override method from QWidget
 
-        Called when user releases the mouse
+    #     Called when user releases the mouse
 
-        """
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.previous_pos = None
-            self.painting = False
-        QWidget.mouseReleaseEvent(self, event)
+    #     """
+    #     if event.button() == Qt.MouseButton.LeftButton:
+    #         self.previous_pos = None
+    #         self.painting = False
+    #     QWidget.mouseReleaseEvent(self, event)
     
     def save(self, filename: str):
         """save pixmap to filename"""
@@ -130,6 +136,123 @@ class PainterWidget(QWidget):
         """Clear the pixmap"""
         self.pixmap.fill(Qt.GlobalColor.white)
         self.update()
+
+    def draw(self, start: QPoint, end: QPoint):
+        # print(f"Draw triggered at points {start} and {end}")
+        self.painter.begin(self.pixmap)
+        self.painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
+        self.painter.setPen(self.pen)
+        self.painter.drawLine(start, end)
+        self.painter.end()
+
+        self.update()
+
+
+
+
+
+
+
+
+
+class PainterController(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(350, 350)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+        self.painter = PainterWidget(self)
+        # displacement = CANVAS_SIZE // 2
+        # self.painter.move(-displacement, -displacement)
+        self.inputs = InputTracker()
+        # self.state = DrawState(self, self.inputs, 0)
+        self.state = DrawState(self, self.inputs, 0)
+        self.state_history = []
+        # self.change_state(DrawState)
+    
+    
+    def mousePressEvent(self, event: QMouseEvent):
+        self.state.mouse_down(event)
+
+        self.inputs.new_mouse_pos(event)
+        return super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event: QMouseEvent):
+        self.state.mouse_move(event)
+
+        self.inputs.new_mouse_pos(event)
+        return super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        self.state.mouse_up(event)
+        return super().mousePressEvent(event)
+    
+    def keyPressEvent(self, event: QKeyEvent):
+        if not event.isAutoRepeat():
+            self.inputs.pressed_keys.add(event.key())
+            self.state.key_down(event)
+        return super().keyPressEvent(event)
+    
+    def keyReleaseEvent(self, event: QKeyEvent):
+        if not event.isAutoRepeat():
+            self.inputs.pressed_keys.remove(event.key())
+            self.state.key_up(event)
+        return super().keyReleaseEvent(event)
+
+    def wheelEvent(self, event: QWheelEvent):
+        self.state.scroll(event)
+        return super().wheelEvent(event)
+
+    
+    def change_state(self, target_state, transiency=0):
+        self.state_history.append(self.state)
+        self.state = target_state(self, self.inputs, transiency)
+    
+    def revert_state(self):
+        # print("Reverting state with list", self.state_history)
+        self.state = self.state_history.pop()
+
+    def button_set_state(self, target_state):
+        def inner():
+            if self.state != target_state:
+                self.change_state(target_state, 0)
+        return inner
+    
+
+    
+
+    def pan(self, delta: QPoint):
+        new_pos = self.painter.pos() + delta
+        self.painter.move(new_pos)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class PainterContainer(QWidget):
     """
@@ -232,7 +355,9 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
 
-        self.painter_holder = PainterContainer()
+        # self.painter_holder = PainterContainer()
+        # self.painter_holder = PainterController(self)
+        self.painter_holder = PainterController(self)
 
         self.bar = self.addToolBar("Menu")
         self.bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -259,14 +384,17 @@ class MainWindow(QMainWindow):
             "Clear",
             self.painter_holder.painter.clear,
         )
+        
+        self.bar.addSeparator()
+
         self._pan_action = self.bar.addAction(
             QApplication.style().standardIcon(
                 QStyle.StandardPixmap.SP_FileDialogListView
             ),  # noqa: F821
             "Pan",
-            self.painter_holder.toggle_pan,
+            self.painter_holder.button_set_state(PanState),
         )
-        self._pan_action.setCheckable(True)
+        # self._pan_action.setCheckable(True)
 
         self.bar.addSeparator()
 
