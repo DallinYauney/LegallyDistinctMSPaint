@@ -38,7 +38,7 @@ class PanState:
                 self.is_panning = True
                 self.can_graduate = False
             case Qt.MouseButton.MiddleButton:
-                pass
+                self.is_panning = True
             case Qt.MouseButton.RightButton:
                 pass
     
@@ -53,6 +53,8 @@ class PanState:
             case Qt.MouseButton.MiddleButton:
                 if self.transiency > 0:
                     self.controller.revert_state()
+                else:
+                    self.is_panning = False
 
     def key_down(self, event: QKeyEvent):
         match event.key():
