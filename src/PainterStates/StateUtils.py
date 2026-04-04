@@ -1,37 +1,16 @@
 from __future__ import annotations
 
-from PyQt6 import QtCore
-
-from PyQt6.QtWidgets import (
-    QWidget,
-    QMainWindow,
-    QApplication,
-    QFileDialog,
-    QStyle,
-    QColorDialog,
-    QApplication,
-)
-from PyQt6.QtCore import Qt, pyqtSlot, QStandardPaths
 from PyQt6.QtGui import (
     QMouseEvent,
-    QKeyEvent,
     QWheelEvent,
-    QInputDevice,
-    QPaintEvent,
-    QPen,
-    QAction,
-    QPainter,
-    QColor,
-    QPixmap,
-    QIcon,
-    QKeySequence,
 )
-import sys
-# from .InputTracker import InputTracker
 from . import InputTracker
-# from app import PainterController
 
-
+"""
+The code within state managers that determines actual painter actions should
+never be more complex than a single function call and the relevant arguments.
+These functions house the callers for the shared painter logic to make the states more readable.
+"""
 
 # def draw(event: QMouseEvent, inputs: InputTracker, controller: PainterController):
 def draw(event: QMouseEvent, inputs: InputTracker, controller):
@@ -39,7 +18,8 @@ def draw(event: QMouseEvent, inputs: InputTracker, controller):
     controller.painter.draw(inputs.prev_mouse_pos - displacement, event.position().toPoint() - displacement)
 
 def erase(event: QMouseEvent, inputs: InputTracker, controller):
-    print("Not yet implemented")
+    displacement = controller.painter.pos()
+    controller.painter.draw(inputs.prev_mouse_pos - displacement, event.position().toPoint() - displacement, True)
 
 def pan(event: QMouseEvent, inputs: InputTracker, controller):
     delta = event.position().toPoint() - inputs.prev_mouse_pos

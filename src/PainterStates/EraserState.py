@@ -1,7 +1,7 @@
 from .StateUtils import draw,erase,pan,scroll_or_zoom
 from .InputTracker import InputTracker
+from . import PanState
 from . import DrawState
-from . import EraserState
 from PyQt6.QtWidgets import (
     QWidget,
 )
@@ -13,65 +13,60 @@ from PyQt6.QtGui import (
 )
 
 """
-PanState: a state for moving around and zooming (planned).
-Frequently gets enabled transiently, but not always.
+Eraser. Paints stuff white.
 
-Transiency is the idea that some modes should be less persistent than others.
-In this case, activating this mode by the MMB from DrawState shouldn't be as permanent
-as pressing the "Pan" button in the toolbar. This code uses three levels of transiency,
-depending on how permanent the action is intended to be.
-For semitransient actions, the app decides to stay or revert state based on if the user
-utilized the state, like clicking before letting up on the space bar.
+Uses the same sort of transiency logic as in PanState, so refer to that.
 
-Transiency Levels:
-0 - not even slightly transient. Normal state, like if pushed by a menu button
-1 - semitransient. Has the potential to graduate to normal state if nothing (such as
-mouse_down) happens to take advantage of it
-2 - fully transient. Can never graduate to normal state
+One day I think it might be cool to allow modes, this mode in particular, to
+semitransiently activate itself - so like holding e to erase if you're already
+in eraser would let you stay in eraser.
 """
 
-class PanState:
+class EraserState:
     def __init__(self, controller: QWidget, inputs: InputTracker, transiency: int):
         self.controller = controller
         self.inputs = inputs
         self.transiency = transiency
         self.can_graduate = transiency == 1
-        self.is_panning = transiency > 0
+        self.is_erasing = transiency > 0
 
     def mouse_down(self, event: QMouseEvent):
         match event.button():
             case Qt.MouseButton.LeftButton:
-                self.is_panning = True
-                self.can_graduate = False
+               self.is_erasing = True
+               self.can_graduate = False
             case Qt.MouseButton.MiddleButton:
-                self.is_panning = True
+                self.controller.change_state(PanState.PanState, 2)
             case Qt.MouseButton.RightButton:
-                pass
+               self.is_erasing = True
+               self.can_graduate = False
     
     def mouse_move(self, event: QMouseEvent):
-        if self.is_panning:
-            pan(event, self.inputs, self.controller)
+        if self.is_erasing:
+            erase(event, self.inputs, self.controller)
 
     def mouse_up(self, event: QMouseEvent):
         match event.button():
             case Qt.MouseButton.LeftButton:
-                self.is_panning = False
+                self.is_erasing = False
             case Qt.MouseButton.MiddleButton:
+                pass
+            case Qt.MouseButton.RightButton:
                 if self.transiency > 1:
                     self.controller.revert_state()
                 else:
-                    self.is_panning = False
-
+                    self.is_erasing = False
+    
     def key_down(self, event: QKeyEvent):
         match event.key():
             case Qt.Key.Key_Space:
-                self.controller.change_state(DrawState.DrawState)
+                self.controller.change_state(PanState.PanState, 1)
             case Qt.Key.Key_E:
-                self.controller.change_state(EraserState.EraserState, 1)
-
+                self.controller.change_state(DrawState.DrawState)
+    
     def key_up(self, event: QKeyEvent):
         match event.key():
-            case Qt.Key.Key_Space:
+            case Qt.Key.Key_E:
                 if self.transiency > 0:
                     if self.can_graduate:
                         self.transiency = 0
@@ -80,4 +75,3 @@ class PanState:
     
     def scroll(self, event: QWheelEvent):
         scroll_or_zoom(event, self.inputs, self.controller)
-
