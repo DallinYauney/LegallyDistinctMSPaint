@@ -39,7 +39,7 @@ from PyQt6.QtGui import (
 import sys
 from PainterStates import DrawState, PanState, EraserState, InputTracker
 
-CANVAS_SIZE = 2500
+CANVAS_SIZE = 4000
 
 # This is a custom widget it inherits from QWidget
 class PainterWidget(QWidget):
@@ -120,8 +120,10 @@ class PainterController(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.painter = PainterWidget(self)
-        self.inputs = InputTracker()
+        displacement = -CANVAS_SIZE // 2
+        self.painter.move(displacement, displacement)
 
+        self.inputs = InputTracker()
         self.state = DrawState(self, self.inputs, 0)
         self.state_history = [DrawState]
         # ^^ note that we don't use change_state() to set the
