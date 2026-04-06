@@ -61,10 +61,14 @@ class PainterWidget(QWidget):
 
         self.previous_pos = None
         self.painter = QPainter()
-        self.pen = QPen()
-        self.pen.setWidth(10)
-        self.pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        self.pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+        self.draw_pen = QPen()
+        self.draw_pen.setWidth(10)
+        self.draw_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        self.draw_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+        self.eraser_pen = QPen(self.draw_pen)
+        self.eraser_pen.setColor(Qt.GlobalColor.white)
 
     def paintEvent(self, event: QPaintEvent):
         """Override method from QWidget
@@ -100,11 +104,9 @@ class PainterWidget(QWidget):
         )
 
         if erasing:
-            eraser_pen = QPen(self.pen)
-            eraser_pen.setColor(Qt.GlobalColor.white)
-            self.painter.setPen(eraser_pen)
+            self.painter.setPen(self.eraser_pen)
         else:
-            self.painter.setPen(self.pen)
+            self.painter.setPen(self.draw_pen)
 
         self.painter.drawLine(start, end)
         self.painter.end()
@@ -342,7 +344,7 @@ class MainWindow(QMainWindow):
         pix_icon.fill(self.color)
 
         self.color_action.setIcon(QIcon(pix_icon))
-        self.painter_holder.painter.pen.setColor(self.color)
+        self.painter_holder.painter.draw_pen.setColor(self.color)
         self.color_action.setText(QColor(self.color).name())
 
 
