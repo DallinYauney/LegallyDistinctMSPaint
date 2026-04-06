@@ -12,7 +12,6 @@ never be more complex than a single function call and the relevant arguments.
 These functions house the callers for the shared painter logic to make the states more readable.
 """
 
-# def draw(event: QMouseEvent, inputs: InputTracker, controller: PainterController):
 def draw(event: QMouseEvent, inputs: InputTracker, controller):
     displacement = controller.painter.pos()
     controller.painter.draw(inputs.prev_mouse_pos - displacement, event.position().toPoint() - displacement)

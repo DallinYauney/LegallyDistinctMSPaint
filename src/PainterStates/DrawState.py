@@ -14,7 +14,7 @@ from PyQt6.QtGui import (
 
 """
 The default state. Left click to draw.
-Also uses Middle click to pan and right click to erase (planned).
+Also uses Middle click to pan and right click to erase.
 """
 
 class DrawState:
