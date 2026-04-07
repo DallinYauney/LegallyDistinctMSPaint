@@ -46,7 +46,7 @@ def scroll_or_zoom(event: QWheelEvent, inputs: InputTracker, controller):
         scroll(pixels, controller)
     elif not degrees.isNull():
         # old API, could be trackpad or mouse
-        if event.angleDelta.manhattanLength() == 120:
+        if event.angleDelta().manhattanLength() == 120:
             # comes from mouse
             zoom(event, input, controller)
         else:
