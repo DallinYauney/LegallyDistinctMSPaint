@@ -4,6 +4,9 @@ from PyQt6.QtGui import (
     QMouseEvent,
     QWheelEvent,
 )
+from PyQt6.QtCore import (
+    QPoint,
+)
 from . import InputTracker
 
 """
@@ -24,13 +27,31 @@ def pan(event: QMouseEvent, inputs: InputTracker, controller):
     delta = event.position().toPoint() - inputs.prev_mouse_pos
     controller.pan(delta)
 
-def scroll(event: QWheelEvent, inputs: InputTracker, controller):
-    controller.pan(event.pixelDelta())
+def scroll(amount: QPoint, controller):
+    controller.pan(amount)
+
+# def zoom(event: QWheelEvent, inputs: InputTracker, controller):
+def zoom(event: QWheelEvent, inputs: InputTracker, controller):
+    print("zoooOOOOM")
 
 def scroll_or_zoom(event: QWheelEvent, inputs: InputTracker, controller):
-    scroll(event,inputs,controller)
-    # angleDelta scrolling not implemented yet
-    # Zoom not implemented yet
+    # from https://doc.qt.io/qt-6/qwheelevent.html#pixelDelta
+    pixels = event.pixelDelta()
 
+    degree_factor = 8
+    degrees = event.angleDelta() / degree_factor
+    expected_mouse_value = 120 / degree_factor
+
+    if not pixels.isNull():
+        # def from trackpad
+        scroll(pixels, controller)
+    elif not degrees.isNull():
+        # old API, could be trackpad or mouse
+        if degrees.manhattanLength() == expected_mouse_value:
+            # comes from mouse
+            zoom(event, input, controller)
+        else:
+            # scroll length not 120, comes from trackpad
+            scroll(degrees, controller)
 
 
