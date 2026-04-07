@@ -38,16 +38,15 @@ def scroll_or_zoom(event: QWheelEvent, inputs: InputTracker, controller):
     # from https://doc.qt.io/qt-6/qwheelevent.html#pixelDelta
     pixels = event.pixelDelta()
 
-    degree_factor = 8
+    degree_factor = 6
     degrees = event.angleDelta() / degree_factor
-    expected_mouse_value = 120 / degree_factor
 
     if not pixels.isNull():
         # def from trackpad
         scroll(pixels, controller)
     elif not degrees.isNull():
         # old API, could be trackpad or mouse
-        if degrees.manhattanLength() == expected_mouse_value:
+        if event.angleDelta.manhattanLength() == 120:
             # comes from mouse
             zoom(event, input, controller)
         else:
