@@ -241,7 +241,7 @@ class PainterController(QWidget):
         # scroll within canvas, no expansion necessary
         if canvas_rect.contains(drawable):
             return
-
+        
         # create new blank pixmap
         new_size = new_rect.size()
         new_canvas = QPixmap(new_size)
@@ -274,6 +274,11 @@ class PainterController(QWidget):
         self.update()
     
     def resizeEvent(self, event: QResizeEvent):
+        """
+        Called automatically when it's resized:
+        1. when someone fullscreens the app
+        2. when the toolbar widget sizes get calculated on initialization
+        """
         self.background.resize(event.size())
         self.expand()
         return super().resizeEvent(event)
