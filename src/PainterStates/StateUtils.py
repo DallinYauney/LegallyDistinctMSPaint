@@ -53,4 +53,5 @@ def scroll_or_zoom(event: QWheelEvent, inputs: InputTracker, controller):
             # scroll length not 120, comes from trackpad
             scroll(degrees, controller)
 
-
+def expand(event: QWheelEvent, inputs: InputTracker, controller):
+    controller.expand()

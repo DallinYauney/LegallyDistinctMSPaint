@@ -39,7 +39,7 @@ from PyQt6.QtGui import (
 import sys
 from PainterStates import DrawState, PanState, EraserState, InputTracker
 
-CANVAS_SIZE = 4000
+CANVAS_SIZE = 300
 
 # This is a custom widget it inherits from QWidget
 class PainterWidget(QWidget):
@@ -52,14 +52,15 @@ class PainterWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setFixedSize(CANVAS_SIZE, CANVAS_SIZE)
+        self.setMinimumSize(CANVAS_SIZE, CANVAS_SIZE)
+        self.setMaximumSize(12000, 12000)
 
         # QPixmap is used to show images on screen
         # QPixmap is a QPaintDevice subclass so QPainter can be used to draw directly onto pixmaps.
         self.pixmap = QPixmap(self.size())
         self.pixmap.fill(Qt.GlobalColor.white)
 
-        self.previous_pos = None
+        self.last_known_pos = QPoint(0,0)
         self.painter = QPainter()
 
         self.draw_pen = QPen()
@@ -123,7 +124,7 @@ class PainterController(QWidget):
 
         self.painter = PainterWidget(self)
         displacement = -CANVAS_SIZE // 2
-        self.painter.move(displacement, displacement)
+        # self.painter.move(displacement, displacement)
 
         self.inputs = InputTracker()
         self.state = DrawState(self, self.inputs, 0)
@@ -209,6 +210,68 @@ class PainterController(QWidget):
         """pans across the screen"""
         new_pos = self.painter.pos() + delta
         self.painter.move(new_pos)
+
+    def expand(self):
+        screen_rect = self.rect()
+        canvas_rect = self.painter.rect()
+        # all rects start at 0,0 so modify canvas_rect by painter displacement
+        canvas_rect.translate(self.painter.pos())
+        new_rect = screen_rect.united(canvas_rect)
+
+        if canvas_rect.contains(screen_rect):
+            # print("No expansion necessary")
+            return
+
+
+        new_size = new_rect.size()
+
+        new_canvas = QPixmap(new_size)
+        old_canvas = self.painter.pixmap
+
+        # QPixMap.copy()
+        # old_canvas.copy() # ???
+        new_canvas.fill(Qt.GlobalColor.white)
+
+        self.painter.pixmap = new_canvas
+        # self.painter.sizeHint(new_size)
+        self.painter.setFixedSize(new_size)
+        # self.painter.adjustSize()
+        # new_origin = screen_rect.topLeft()
+        # old_origin = canvas_rect.topLeft()
+        # displacement = old_origin - new_origin
+        # old_position = self.painter.pos()
+        # displacement = -1 * old_position
+
+        # maybe I only need to modify displacement if I'm creating new
+        # canvas space? If I'm panning inside the canvas like normal,
+        # I've *already done* the moving around, so nothing extra should be necessary
+        # Or maybe there's a way to encode that information inside the setter indirectly?
+
+        # displacement = self.painter.last_known_pos - self.painter.pos()
+        # self.pan(displacement)
+        # self.painter.last_known_pos = self.painter.pos()
+
+        displacement = QPoint(0,0)
+        # potential_displacement = self.painter.last_known_pos - self.painter.pos()
+        potential_displacement = -1 * self.painter.pos()
+
+        if self.painter.pos().x() > 0:
+            displacement.setX(potential_displacement.x())
+        
+        if self.painter.pos().y() > 0:
+            displacement.setY(potential_displacement.y())
+
+
+        # empty_space_top = self.painter.pos().y() > 0
+        # empty_space_left = self.painter.pos().x() > 0
+        # if empty_space_left or empty_space_top:
+        #     displacement = self.painter.last_known_pos - self.painter.pos()
+        #     self.pan(displacement)
+
+        self.pan(displacement)
+        self.painter.last_known_pos = self.painter.pos()
+        self.update()
+        
 
 
 
