@@ -282,7 +282,7 @@ class PainterController(QWidget):
         """
         self.background.resize(event.size())
 
-        ## keep the center of the app the same, rather than the top-left##
+        ## keep the center of the app the same, rather than the top-left ##
         size_change = event.size() - event.oldSize()
         manhattan_change = abs(size_change.width() + size_change.height())
         # the resizing works poorly on gradual changes, so don't bother
