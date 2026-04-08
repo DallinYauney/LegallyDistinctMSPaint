@@ -39,20 +39,17 @@ from PyQt6.QtGui import (
 import sys
 from PainterStates import DrawState, PanState, EraserState, InputTracker
 
-CANVAS_SIZE = 300
-
 # This is a custom widget it inherits from QWidget
 class PainterWidget(QWidget):
     """A widget where user can draw with their mouse
 
     The user draws on a QPixmap which is itself paint from paintEvent()
-
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setMinimumSize(CANVAS_SIZE, CANVAS_SIZE)
+        self.setMinimumSize(500, 500)
         self.setMaximumSize(12000, 12000)
 
         # QPixmap is used to show images on screen
@@ -74,7 +71,6 @@ class PainterWidget(QWidget):
         """Override method from QWidget
 
         Paint the Pixmap into the widget
-
         """
         with QPainter(self) as painter:
             painter.drawPixmap(0, 0, self.pixmap)
@@ -122,8 +118,6 @@ class PainterController(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.painter = PainterWidget(self)
-        displacement = -CANVAS_SIZE // 2
-        # self.painter.move(displacement, displacement)
 
         self.inputs = InputTracker()
         self.state = DrawState(self, self.inputs, 0)
