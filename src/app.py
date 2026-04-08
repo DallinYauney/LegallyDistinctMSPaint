@@ -205,27 +205,41 @@ class PainterController(QWidget):
         self.painter.move(new_pos)
 
     def expand(self):
+        """
+        The core of the "infinite scrolling" feature.
+
+        If the canvas isn't already covering the whole screen, it
+        creates a new blank canvas just large enough to cover both
+        the screen and the old canvas, and copies the old canvas over.
+        """
+        ### Calculate bounding boxes for various sections ###
         screen_rect = self.rect()
         canvas_rect = self.painter.rect()
+
+        # we need an extra copy of the canvas rect later
         copy_source_rect = self.painter.rect()
 
         # all rects start at 0,0 so modify canvas_rect by painter displacement
         canvas_rect.translate(self.painter.pos())
         new_rect = screen_rect.united(canvas_rect)
 
+        # scroll within canvas, no expansion necessary
         if canvas_rect.contains(screen_rect):
-            # internal scroll. no expansion necessary
             return
 
+        # create new blank pixmap
         new_size = new_rect.size()
         new_canvas = QPixmap(new_size)
         old_canvas = self.painter.pixmap
 
+        ### Copy over old pixmap to new pixmap at right place ###
         self.painter.pixmap = new_canvas
         self.painter.setMinimumSize(new_size)
         
+        # Fill the whole thing with white (unfortunately necessary)
         new_canvas.fill(Qt.GlobalColor.white)
 
+        ## We only need to change the position if we're filling in up or left ##
         displacement = QPoint(0,0)
         potential_displacement = -1 * self.painter.pos()
 
@@ -241,6 +255,7 @@ class PainterController(QWidget):
         with QPainter(new_canvas) as painter:
             painter.drawPixmap(copy_source_rect, old_canvas)
         
+        # update triggers a repaint of the canvas
         self.update()
         
 
