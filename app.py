@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QStyle,
     QColorDialog,
     QApplication,
+    QInputDialog,
 )
 from PyQt6.QtCore import Qt, pyqtSlot, QStandardPaths, QRect
 from PyQt6.QtGui import (
@@ -66,6 +67,9 @@ class PainterWidget(QWidget):
         self.painting = False
         self.painting_mode = True
 
+        # TEXT
+        self.text_mode = False
+
     def paintEvent(self, event: QPaintEvent):
         """Override method from QWidget
 
@@ -94,15 +98,44 @@ class PainterWidget(QWidget):
         with QPainter(self) as painter:
             painter.drawPixmap(0, 0, self.pixmap)
 
+    # TEXT
+    def enable_text_mode(self):
+        self.text_mode = True
+
     def mousePressEvent(self, event: QMouseEvent):
         """Override from QWidget
 
         Called when user clicks on the mouse
 
         """
-        if event.button() == Qt.MouseButton.LeftButton and self.painting_mode:
-            self.previous_pos = event.position().toPoint()
-            self.painting = True
+
+        if event.button() == Qt.MouseButton.LeftButton:
+
+            # TEXT
+            if self.text_mode:
+                # Grab the point where the user clicked
+                pos = event.position().toPoint()
+                text, ok = QInputDialog.getText(self, "Enter Text", "Text:")
+
+                if ok and text:
+                    self.painter.begin(self.pixmap)
+                    self.painter.setPen(self.pen)
+
+                    font = QFont()
+                    font.setPointSize(20)
+                    self.painter.setFont(font)
+
+                    self.painter.drawText(pos, text)
+                    self.painter.end()
+
+                    self.update()
+
+                self.text_mode = False
+                return
+
+            if self.painting_mode:
+                self.previous_pos = event.position().toPoint()
+                self.painting = True
         QWidget.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -266,6 +299,7 @@ class MainWindow(QMainWindow):
             self.on_save,
         )
         self._save_action.setShortcut(QKeySequence.StandardKey.Save)
+
         self._open_action = self.bar.addAction(
             QApplication.style().standardIcon(
                 QStyle.StandardPixmap.SP_DialogOpenButton
@@ -274,6 +308,7 @@ class MainWindow(QMainWindow):
             self.on_open,
         )
         self._open_action.setShortcut(QKeySequence.StandardKey.Open)
+
         self.bar.addAction(
             QApplication.style().standardIcon(
                 QStyle.StandardPixmap.SP_DialogResetButton
@@ -281,6 +316,7 @@ class MainWindow(QMainWindow):
             "Clear",
             self.painter_holder.painter.clear,
         )
+
         self._pan_action = self.bar.addAction(
             QApplication.style().standardIcon(
                 QStyle.StandardPixmap.SP_FileDialogListView
@@ -289,6 +325,16 @@ class MainWindow(QMainWindow):
             self.painter_holder.toggle_pan,
         )
         self._pan_action.setCheckable(True)
+
+        # TEXT
+        self._text_action = self.bar.addAction(
+            QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_FileDialogDetailedView
+            ),
+            "Text",
+            self.enable_text_mode,
+        )
+        self._text_action.setCheckable(True)
 
         self.bar.addSeparator()
 
@@ -354,6 +400,10 @@ class MainWindow(QMainWindow):
         self.color_action.setIcon(QIcon(pix_icon))
         self.painter_holder.painter.pen.setColor(self.color)
         self.color_action.setText(QColor(self.color).name())
+
+    # TEXT
+    def enable_text_mode(self):
+        self.painter_holder.painter.enable_text_mode()
 
 
 if __name__ == "__main__":
