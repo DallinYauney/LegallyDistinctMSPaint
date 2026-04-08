@@ -227,6 +227,7 @@ class PainterController(QWidget):
         # screen_rect should be expanded by a bit so we can draw outside the window
         screen_margin = QMargins()
         screen_margin += 250 # even 250px margin on every side
+        # screen_margin += -20
         drawable = self.rect().marginsAdded(screen_margin)
 
         canvas_rect = self.painter.rect()
@@ -280,7 +281,17 @@ class PainterController(QWidget):
         2. when the toolbar widget sizes get calculated on initialization
         """
         self.background.resize(event.size())
-        self.expand()
+
+        ## keep the center of the app the same, rather than the top-left##
+        size_change = event.size() - event.oldSize()
+        manhattan_change = abs(size_change.width() + size_change.height())
+        # the resizing works poorly on gradual changes, so don't bother
+        if manhattan_change > 50:
+            delta = QPoint(size_change.width() // 2, size_change.height() // 2)
+            self.pan(delta)
+
+            # preemptive expansion so it doesn't happen on mouse_down
+            self.expand()
         return super().resizeEvent(event)
         
 
