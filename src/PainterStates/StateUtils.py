@@ -5,6 +5,7 @@ from PyQt6.QtGui import (
     QWheelEvent,
 )
 from PyQt6.QtCore import (
+    Qt,
     QPoint,
 )
 from . import InputTracker
@@ -30,7 +31,6 @@ def pan(event: QMouseEvent, inputs: InputTracker, controller):
 def scroll(amount: QPoint, controller):
     controller.pan(amount)
 
-# def zoom(event: QWheelEvent, inputs: InputTracker, controller):
 def zoom(event: QWheelEvent, inputs: InputTracker, controller):
     print("zoooOOOOM")
 

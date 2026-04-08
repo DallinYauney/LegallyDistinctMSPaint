@@ -53,9 +53,6 @@ class PanState:
             pan(event, self.inputs, self.controller)
 
     def mouse_up(self, event: QMouseEvent):
-        if self.is_panning:
-            expand(event, self.inputs, self.controller)
-
         match event.button():
             case Qt.MouseButton.LeftButton:
                 self.is_panning = False
