@@ -16,12 +16,14 @@ from PyQt6.QtWidgets import (
     QStyle,
     QColorDialog,
     QApplication,
+    QLabel,
 )
 from PyQt6.QtCore import (
     Qt,
     pyqtSlot,
     QStandardPaths,
     QPoint,
+    QMargins,
 )
 from PyQt6.QtGui import (
     QMouseEvent,
@@ -35,6 +37,7 @@ from PyQt6.QtGui import (
     QPixmap,
     QIcon,
     QKeySequence,
+    QResizeEvent,
 )
 import sys
 from PainterStates import DrawState, PanState, EraserState, InputTracker
@@ -49,7 +52,7 @@ class PainterWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setMinimumSize(500, 500)
+        self.setMinimumSize(100, 100)
         self.setMaximumSize(12000, 12000)
 
         # QPixmap is used to show images on screen
@@ -126,6 +129,14 @@ class PainterController(QWidget):
         # default state because PainterController needs to be
         # initialized before the buttons, so they can use it to
         # connect to load, clear, button_set_state, etc.
+
+        self.background = QLabel(self)
+        self.background.setScaledContents(True)
+        background_pixmap = QPixmap(1, 1)
+        # background_pixmap.fill(QColor("#202326"))
+        background_pixmap.fill(Qt.GlobalColor.white)
+        self.background.setPixmap(background_pixmap)
+        self.background.stackUnder(self.painter)
     
 
     ### ### INPUT PLUMBING ### ###
@@ -213,7 +224,11 @@ class PainterController(QWidget):
         the screen and the old canvas, and copies the old canvas over.
         """
         ### Calculate bounding boxes for various sections ###
-        screen_rect = self.rect()
+        # screen_rect should be expanded by a bit so we can draw outside the window
+        screen_margin = QMargins()
+        screen_margin += 250 # even 250px margin on every side
+        drawable = self.rect().marginsAdded(screen_margin)
+
         canvas_rect = self.painter.rect()
 
         # we need an extra copy of the canvas rect later
@@ -221,10 +236,10 @@ class PainterController(QWidget):
 
         # all rects start at 0,0 so modify canvas_rect by painter displacement
         canvas_rect.translate(self.painter.pos())
-        new_rect = screen_rect.united(canvas_rect)
+        new_rect = drawable.united(canvas_rect)
 
         # scroll within canvas, no expansion necessary
-        if canvas_rect.contains(screen_rect):
+        if canvas_rect.contains(drawable):
             return
 
         # create new blank pixmap
@@ -243,11 +258,11 @@ class PainterController(QWidget):
         displacement = QPoint(0,0)
         potential_displacement = -1 * self.painter.pos()
 
-        if self.painter.pos().x() > 0:
-            displacement.setX(potential_displacement.x())
+        if self.painter.pos().x() > -screen_margin.left():
+            displacement.setX(potential_displacement.x() - screen_margin.left())
         
-        if self.painter.pos().y() > 0:
-            displacement.setY(potential_displacement.y())
+        if self.painter.pos().y() > -screen_margin.top():
+            displacement.setY(potential_displacement.y() - screen_margin.top())
 
         self.pan(displacement)
         copy_source_rect.translate(-1 * displacement)
@@ -257,6 +272,11 @@ class PainterController(QWidget):
         
         # update triggers a repaint of the canvas
         self.update()
+    
+    def resizeEvent(self, event: QResizeEvent):
+        self.background.resize(event.size())
+        self.expand()
+        return super().resizeEvent(event)
         
 
 
@@ -403,9 +423,5 @@ if __name__ == "__main__":
 
     w = MainWindow()
     w.show()
-
-    # doesn't properly expand until all widgets are
-    # visible (width isn't calculated properly)
-    w.painter_holder.expand()
 
     sys.exit(app.exec())
