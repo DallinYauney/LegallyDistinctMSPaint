@@ -60,7 +60,6 @@ class PainterWidget(QWidget):
         self.pixmap = QPixmap(self.size())
         self.pixmap.fill(Qt.GlobalColor.white)
 
-        self.last_known_pos = QPoint(0,0)
         self.painter = QPainter()
 
         self.draw_pen = QPen()
@@ -214,45 +213,26 @@ class PainterController(QWidget):
     def expand(self):
         screen_rect = self.rect()
         canvas_rect = self.painter.rect()
+        copy_source_rect = self.painter.rect()
+
         # all rects start at 0,0 so modify canvas_rect by painter displacement
         canvas_rect.translate(self.painter.pos())
         new_rect = screen_rect.united(canvas_rect)
 
         if canvas_rect.contains(screen_rect):
-            # print("No expansion necessary")
+            # internal scroll. no expansion necessary
             return
 
-
         new_size = new_rect.size()
-
         new_canvas = QPixmap(new_size)
         old_canvas = self.painter.pixmap
 
-        # QPixMap.copy()
-        # old_canvas.copy() # ???
+        self.painter.pixmap = new_canvas
+        self.painter.setMinimumSize(new_size)
+        
         new_canvas.fill(Qt.GlobalColor.white)
 
-        self.painter.pixmap = new_canvas
-        # self.painter.sizeHint(new_size)
-        self.painter.setFixedSize(new_size)
-        # self.painter.adjustSize()
-        # new_origin = screen_rect.topLeft()
-        # old_origin = canvas_rect.topLeft()
-        # displacement = old_origin - new_origin
-        # old_position = self.painter.pos()
-        # displacement = -1 * old_position
-
-        # maybe I only need to modify displacement if I'm creating new
-        # canvas space? If I'm panning inside the canvas like normal,
-        # I've *already done* the moving around, so nothing extra should be necessary
-        # Or maybe there's a way to encode that information inside the setter indirectly?
-
-        # displacement = self.painter.last_known_pos - self.painter.pos()
-        # self.pan(displacement)
-        # self.painter.last_known_pos = self.painter.pos()
-
         displacement = QPoint(0,0)
-        # potential_displacement = self.painter.last_known_pos - self.painter.pos()
         potential_displacement = -1 * self.painter.pos()
 
         if self.painter.pos().x() > 0:
@@ -261,15 +241,12 @@ class PainterController(QWidget):
         if self.painter.pos().y() > 0:
             displacement.setY(potential_displacement.y())
 
-
-        # empty_space_top = self.painter.pos().y() > 0
-        # empty_space_left = self.painter.pos().x() > 0
-        # if empty_space_left or empty_space_top:
-        #     displacement = self.painter.last_known_pos - self.painter.pos()
-        #     self.pan(displacement)
-
         self.pan(displacement)
-        self.painter.last_known_pos = self.painter.pos()
+        copy_source_rect.translate(-1 * displacement)
+
+        with QPainter(new_canvas) as painter:
+            painter.drawPixmap(copy_source_rect, old_canvas)
+        
         self.update()
         
 
@@ -417,4 +394,9 @@ if __name__ == "__main__":
 
     w = MainWindow()
     w.show()
+
+    # doesn't properly expand until all widgets are
+    # visible (width isn't calculated properly)
+    w.painter_holder.expand()
+
     sys.exit(app.exec())
