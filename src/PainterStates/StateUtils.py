@@ -5,6 +5,7 @@ from PyQt6.QtGui import (
     QWheelEvent,
 )
 from PyQt6.QtCore import (
+    Qt,
     QPoint,
 )
 from . import InputTracker
@@ -30,7 +31,6 @@ def pan(event: QMouseEvent, inputs: InputTracker, controller):
 def scroll(amount: QPoint, controller):
     controller.pan(amount)
 
-# def zoom(event: QWheelEvent, inputs: InputTracker, controller):
 def zoom(event: QWheelEvent, inputs: InputTracker, controller):
     print("zoooOOOOM")
 
@@ -53,4 +53,5 @@ def scroll_or_zoom(event: QWheelEvent, inputs: InputTracker, controller):
             # scroll length not 120, comes from trackpad
             scroll(degrees, controller)
 
-
+def expand(event: QWheelEvent, inputs: InputTracker, controller):
+    controller.expand()

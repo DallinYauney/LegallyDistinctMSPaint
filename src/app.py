@@ -16,18 +16,22 @@ from PyQt6.QtWidgets import (
     QStyle,
     QColorDialog,
     QApplication,
+    QLabel,
 )
 from PyQt6.QtCore import (
     Qt,
     pyqtSlot,
     QStandardPaths,
     QPoint,
+    QMargins,
+    QSize,
 )
 from PyQt6.QtGui import (
     QMouseEvent,
     QKeyEvent,
     QWheelEvent,
     QPaintEvent,
+    QImage,
     QPen,
     QAction,
     QPainter,
@@ -35,31 +39,29 @@ from PyQt6.QtGui import (
     QPixmap,
     QIcon,
     QKeySequence,
+    QResizeEvent,
 )
 import sys
 from PainterStates import DrawState, PanState, EraserState, InputTracker
-
-CANVAS_SIZE = 4000
 
 # This is a custom widget it inherits from QWidget
 class PainterWidget(QWidget):
     """A widget where user can draw with their mouse
 
     The user draws on a QPixmap which is itself paint from paintEvent()
-
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setFixedSize(CANVAS_SIZE, CANVAS_SIZE)
+        self.setMinimumSize(100, 100)
+        self.setMaximumSize(12000, 12000)
 
         # QPixmap is used to show images on screen
         # QPixmap is a QPaintDevice subclass so QPainter can be used to draw directly onto pixmaps.
         self.pixmap = QPixmap(self.size())
         self.pixmap.fill(Qt.GlobalColor.white)
 
-        self.previous_pos = None
         self.painter = QPainter()
 
         self.draw_pen = QPen()
@@ -74,7 +76,6 @@ class PainterWidget(QWidget):
         """Override method from QWidget
 
         Paint the Pixmap into the widget
-
         """
         with QPainter(self) as painter:
             painter.drawPixmap(0, 0, self.pixmap)
@@ -85,10 +86,13 @@ class PainterWidget(QWidget):
 
     def load(self, filename: str):
         """load pixmap from filename"""
-        self.pixmap.load(filename)
-        self.pixmap = self.pixmap.scaled(
-            self.size(), Qt.AspectRatioMode.KeepAspectRatio
-        )
+        
+        image = QImage(filename)
+        self.pixmap = QPixmap.fromImage(image)
+
+        self.setFixedSize(image.size())
+
+        self.parentWidget().load_center(image.size())
         self.update()
 
     def clear(self):
@@ -122,8 +126,6 @@ class PainterController(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.painter = PainterWidget(self)
-        displacement = -CANVAS_SIZE // 2
-        self.painter.move(displacement, displacement)
 
         self.inputs = InputTracker()
         self.state = DrawState(self, self.inputs, 0)
@@ -132,6 +134,14 @@ class PainterController(QWidget):
         # default state because PainterController needs to be
         # initialized before the buttons, so they can use it to
         # connect to load, clear, button_set_state, etc.
+
+        self.background = QLabel(self)
+        self.background.setScaledContents(True)
+        background_pixmap = QPixmap(1, 1)
+        # background_pixmap.fill(QColor("#202326"))
+        background_pixmap.fill(Qt.GlobalColor.white)
+        self.background.setPixmap(background_pixmap)
+        self.background.stackUnder(self.painter)
     
 
     ### ### INPUT PLUMBING ### ###
@@ -209,6 +219,99 @@ class PainterController(QWidget):
         """pans across the screen"""
         new_pos = self.painter.pos() + delta
         self.painter.move(new_pos)
+    
+    def load_center(self, image_size: QSize):
+        # reset painter location to top left
+        self.painter.move(-1 * self.painter.pos())
+
+        # math stuff to put the image in the center
+        difference = self.rect().size() - image_size
+        displacement = QPoint()
+        displacement.setX(difference.width() // 2)
+        displacement.setY(difference.height() // 2)
+        self.painter.move(displacement)
+
+        self.expand()
+
+    def expand(self):
+        """
+        The core of the "infinite scrolling" feature.
+
+        If the canvas isn't already covering the whole screen, it
+        creates a new blank canvas just large enough to cover both
+        the screen and the old canvas, and copies the old canvas over.
+        """
+        ### Calculate bounding boxes for various sections ###
+        # screen_rect should be expanded by a bit so we can draw outside the window
+        screen_margin = QMargins()
+        screen_margin += 250 # even 250px margin on every side
+        # screen_margin += -20
+        drawable = self.rect().marginsAdded(screen_margin)
+
+        canvas_rect = self.painter.rect()
+
+        # we need an extra copy of the canvas rect later
+        copy_source_rect = self.painter.rect()
+
+        # all rects start at 0,0 so modify canvas_rect by painter displacement
+        canvas_rect.translate(self.painter.pos())
+        new_rect = drawable.united(canvas_rect)
+
+        # scroll within canvas, no expansion necessary
+        if canvas_rect.contains(drawable):
+            return
+        
+        # create new blank pixmap
+        new_size = new_rect.size()
+        new_canvas = QPixmap(new_size)
+        old_canvas = self.painter.pixmap
+
+        ### Copy over old pixmap to new pixmap at right place ###
+        self.painter.pixmap = new_canvas
+        self.painter.setMinimumSize(new_size)
+        
+        # Fill the whole thing with white (unfortunately necessary)
+        new_canvas.fill(Qt.GlobalColor.white)
+
+        ## We only need to change the position if we're filling in up or left ##
+        displacement = QPoint(0,0)
+        potential_displacement = -1 * self.painter.pos()
+
+        if self.painter.pos().x() > -screen_margin.left():
+            displacement.setX(potential_displacement.x() - screen_margin.left())
+        
+        if self.painter.pos().y() > -screen_margin.top():
+            displacement.setY(potential_displacement.y() - screen_margin.top())
+
+        self.pan(displacement)
+        copy_source_rect.translate(-1 * displacement)
+
+        with QPainter(new_canvas) as painter:
+            painter.drawPixmap(copy_source_rect, old_canvas)
+        
+        # update triggers a repaint of the canvas
+        self.update()
+    
+    def resizeEvent(self, event: QResizeEvent):
+        """
+        Called automatically when it's resized:
+        1. when someone fullscreens the app
+        2. when the toolbar widget sizes get calculated on initialization
+        """
+        self.background.resize(event.size())
+
+        ## keep the center of the app the same, rather than the top-left ##
+        size_change = event.size() - event.oldSize()
+        manhattan_change = abs(size_change.width() + size_change.height())
+        # the resizing works poorly on gradual changes, so don't bother
+        if manhattan_change > 50:
+            delta = QPoint(size_change.width() // 2, size_change.height() // 2)
+            self.pan(delta)
+
+            # preemptive expansion so it doesn't happen on mouse_down
+            self.expand()
+        return super().resizeEvent(event)
+        
 
 
 
@@ -354,4 +457,5 @@ if __name__ == "__main__":
 
     w = MainWindow()
     w.show()
+
     sys.exit(app.exec())
