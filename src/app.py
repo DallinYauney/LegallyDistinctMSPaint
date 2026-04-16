@@ -24,12 +24,14 @@ from PyQt6.QtCore import (
     QStandardPaths,
     QPoint,
     QMargins,
+    QSize,
 )
 from PyQt6.QtGui import (
     QMouseEvent,
     QKeyEvent,
     QWheelEvent,
     QPaintEvent,
+    QImage,
     QPen,
     QAction,
     QPainter,
@@ -84,10 +86,13 @@ class PainterWidget(QWidget):
 
     def load(self, filename: str):
         """load pixmap from filename"""
-        self.pixmap.load(filename)
-        self.pixmap = self.pixmap.scaled(
-            self.size(), Qt.AspectRatioMode.KeepAspectRatio
-        )
+        
+        image = QImage(filename)
+        self.pixmap = QPixmap.fromImage(image)
+
+        self.setFixedSize(image.size())
+
+        self.parentWidget().load_center(image.size())
         self.update()
 
     def clear(self):
@@ -214,6 +219,19 @@ class PainterController(QWidget):
         """pans across the screen"""
         new_pos = self.painter.pos() + delta
         self.painter.move(new_pos)
+    
+    def load_center(self, image_size: QSize):
+        # reset painter location to top left
+        self.painter.move(-1 * self.painter.pos())
+
+        # math stuff to put the image in the center
+        difference = self.rect().size() - image_size
+        displacement = QPoint()
+        displacement.setX(difference.width() // 2)
+        displacement.setY(difference.height() // 2)
+        self.painter.move(displacement)
+
+        self.expand()
 
     def expand(self):
         """
