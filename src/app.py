@@ -293,6 +293,8 @@ class MainWindow(QMainWindow):
         self.slider.setValue(10)
 
         self.bar.addWidget(QLabel("Size"))
+        self.size_label = QLabel("10")
+        self.bar.addWidget(self.size_label)
         self.bar.addWidget(self.slider)
 
         self.slider.valueChanged.connect(self.change_pen_size)
@@ -311,6 +313,7 @@ class MainWindow(QMainWindow):
         painter = self.painter_holder.painter
         painter.draw_pen.setWidth(value)
         painter.eraser_pen.setWidth(value)
+        self.size_label.setText(str(value))
 
     @QtCore.pyqtSlot()
     def on_save(self):
