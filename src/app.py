@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
     QStyle,
     QColorDialog,
     QApplication,
+    QSlider,
+    QLabel,
 )
 from PyQt6.QtCore import (
     Qt,
@@ -40,6 +42,7 @@ import sys
 from PainterStates import DrawState, PanState, EraserState, InputTracker
 
 CANVAS_SIZE = 4000
+
 
 # This is a custom widget it inherits from QWidget
 class PainterWidget(QWidget):
@@ -78,7 +81,7 @@ class PainterWidget(QWidget):
         """
         with QPainter(self) as painter:
             painter.drawPixmap(0, 0, self.pixmap)
-    
+
     def save(self, filename: str):
         """save pixmap to filename"""
         self.pixmap.save(filename)
@@ -112,7 +115,7 @@ class PainterWidget(QWidget):
         self.painter.end()
 
         self.update()
-    
+
 
 class PainterController(QWidget):
     def __init__(self, parent=None):
@@ -132,7 +135,6 @@ class PainterController(QWidget):
         # default state because PainterController needs to be
         # initialized before the buttons, so they can use it to
         # connect to load, clear, button_set_state, etc.
-    
 
     ### ### INPUT PLUMBING ### ###
     def mousePressEvent(self, event: QMouseEvent):
@@ -141,7 +143,7 @@ class PainterController(QWidget):
 
         self.inputs.new_mouse_pos(event)
         return super().mousePressEvent(event)
-    
+
     def mouseMoveEvent(self, event: QMouseEvent):
         """passes mouse move events to the active state"""
         self.state.mouse_move(event)
@@ -153,14 +155,14 @@ class PainterController(QWidget):
         """passes mouse button release events to the active state"""
         self.state.mouse_up(event)
         return super().mousePressEvent(event)
-    
+
     def keyPressEvent(self, event: QKeyEvent):
         """passes key press events to the active state"""
         if not event.isAutoRepeat():
             # self.inputs.pressed_keys.add(event.key())
             self.state.key_down(event)
         return super().keyPressEvent(event)
-    
+
     def keyReleaseEvent(self, event: QKeyEvent):
         """passes key up events to the active state"""
         if not event.isAutoRepeat():
@@ -173,35 +175,34 @@ class PainterController(QWidget):
         self.state.scroll(event)
         return super().wheelEvent(event)
 
-
     ### ### STATE MANAGEMENT ### ###
     def change_state(self, target_state, transiency=0):
         """changes the active state"""
         self.set_button_checked(target_state)
         self.state_history.append(target_state)
         self.state = target_state(self, self.inputs, transiency)
-    
+
     def revert_state(self):
         """sets the state to the previous state"""
         self.state_history.pop()
         new_state = self.state_history[-1]
         self.state = new_state(self, self.inputs, 0)
         self.set_button_checked(new_state)
-    
+
     def set_button_checked(self, target_state):
         """sets one state's button to be checked (the others get unchecked)"""
         for button in self.parent.state_buttons.values():
             button.setChecked(False)
         self.parent.state_buttons[target_state].setChecked(True)
 
-
     def button_set_state(self, target_state):
         """method called by state buttons to enable a certain state"""
+
         def inner():
             if self.state != target_state:
                 self.change_state(target_state, 0)
+
         return inner
-    
 
     ### ### ACTUAL FUNCTIONALITY ### ###
     # probably move this to PainterWidget eventually lol
@@ -209,7 +210,6 @@ class PainterController(QWidget):
         """pans across the screen"""
         new_pos = self.painter.pos() + delta
         self.painter.move(new_pos)
-
 
 
 class MainWindow(QMainWindow):
@@ -245,7 +245,7 @@ class MainWindow(QMainWindow):
             "Clear",
             self.painter_holder.painter.clear,
         )
-        
+
         self.bar.addSeparator()
 
         self.state_buttons = {}
@@ -285,6 +285,18 @@ class MainWindow(QMainWindow):
         self.color = Qt.GlobalColor.black
         self.set_color(self.color)
 
+        self.bar.addSeparator()
+
+        self.slider = QSlider(Qt.Orientation.Vertical)
+        self.slider.setMinimum(1)
+        self.slider.setMaximum(50)
+        self.slider.setValue(10)
+
+        self.bar.addWidget(QLabel("Size"))
+        self.bar.addWidget(self.slider)
+
+        self.slider.valueChanged.connect(self.change_pen_size)
+
         self.mime_type_filters = ["image/png", "image/jpeg"]
 
         # set all state buttons to be checkable
@@ -294,6 +306,11 @@ class MainWindow(QMainWindow):
         # set default state button to be checked
         default_state = self.painter_holder.state_history[-1]
         self.state_buttons[default_state].setChecked(True)
+
+    def change_pen_size(self, value):
+        painter = self.painter_holder.painter
+        painter.draw_pen.setWidth(value)
+        painter.eraser_pen.setWidth(value)
 
     @QtCore.pyqtSlot()
     def on_save(self):
