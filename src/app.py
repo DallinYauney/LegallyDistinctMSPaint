@@ -455,6 +455,11 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
 
+    # set application branding
+    app.setApplicationDisplayName("MS Paint")
+    app_icon = QIcon("branding/notPaintLogoCropped.png")
+    app.setWindowIcon(app_icon)
+
     w = MainWindow()
     w.show()
 
