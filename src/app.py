@@ -288,12 +288,12 @@ class MainWindow(QMainWindow):
         self.bar.addSeparator()
 
         # Slider
-        self.slider = QSlider(Qt.Orientation.Vertical)
+        self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(1)
-        self.slider.setMaximum(100)
+        self.slider.setMaximum(25)
         self.slider.setValue(10)
 
-        # Could'nt be like the other buttons because QSlider is a widget
+        # Couldn't be like the other buttons because QSlider is a widget
         # So it had to use addWidget with a QLabel
         self.bar.addWidget(QLabel("Size"))
         self.size_label = QLabel("10")
