@@ -83,5 +83,6 @@ class PanState:
                         self.controller.revert_state()
     
     def scroll(self, event: QWheelEvent):
-        scroll_or_zoom(event, self.inputs, self.controller)
+        if not self.is_panning: # prevent accidental pen size changes while MMB dragging
+            scroll_or_zoom(event, self.inputs, self.controller)
 
