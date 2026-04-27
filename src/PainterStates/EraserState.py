@@ -1,4 +1,4 @@
-from .StateUtils import draw,erase,pan,scroll_or_zoom
+from .StateUtils import draw,erase,pan,scroll_or_zoom,erase_rect
 from .InputTracker import InputTracker
 from . import PanState
 from . import DrawState
@@ -29,6 +29,7 @@ class EraserState:
         self.transiency = transiency
         self.can_graduate = transiency == 1
         self.is_erasing = transiency > 0
+        self.is_rect_erasing = False
 
     def mouse_down(self, event: QMouseEvent):
         match event.button():
@@ -38,11 +39,13 @@ class EraserState:
             case Qt.MouseButton.MiddleButton:
                 self.controller.change_state(PanState.PanState, 2)
             case Qt.MouseButton.RightButton:
-               self.is_erasing = True
+               self.is_rect_erasing = True
                self.can_graduate = False
     
     def mouse_move(self, event: QMouseEvent):
-        if self.is_erasing:
+        if self.is_rect_erasing:
+            erase_rect(event, self.inputs, self.controller)
+        elif self.is_erasing:
             erase(event, self.inputs, self.controller)
 
     def mouse_up(self, event: QMouseEvent):
@@ -55,6 +58,7 @@ class EraserState:
                 if self.transiency > 1:
                     self.controller.revert_state()
                 else:
+                    self.is_rect_erasing = False
                     self.is_erasing = False
     
     def key_down(self, event: QKeyEvent):

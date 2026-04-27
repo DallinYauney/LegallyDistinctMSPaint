@@ -7,6 +7,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtCore import (
     Qt,
     QPoint,
+    QRect,
 )
 from . import InputTracker
 
@@ -23,6 +24,15 @@ def draw(event: QMouseEvent, inputs: InputTracker, controller):
 def erase(event: QMouseEvent, inputs: InputTracker, controller):
     displacement = controller.painter.pos()
     controller.painter.draw(inputs.prev_mouse_pos - displacement, event.position().toPoint() - displacement, True)
+
+def erase_rect(event: QMouseEvent, inputs: InputTracker, controller):
+    displacement = controller.painter.pos()
+    start_corner = inputs.mouse_down_pos - displacement
+    end_corner = event.position().toPoint() - displacement
+    rect_to_erase = QRect(start_corner, end_corner)
+
+    print(f"erasing at {rect_to_erase}")
+    controller.painter.erase_rect(rect_to_erase)
 
 def pan(event: QMouseEvent, inputs: InputTracker, controller):
     delta = event.position().toPoint() - inputs.prev_mouse_pos
