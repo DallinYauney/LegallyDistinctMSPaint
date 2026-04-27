@@ -116,6 +116,10 @@ class PainterWidget(QWidget):
 
         self.update()
 
+    def change_pen_size(self, size):
+        self.draw_pen.setWidth(size)
+        self.eraser_pen.setWidth(size)
+
 
 class PainterController(QWidget):
     def __init__(self, parent=None):
@@ -313,10 +317,8 @@ class MainWindow(QMainWindow):
         self.state_buttons[default_state].setChecked(True)
 
     def change_pen_size(self, value):
-        painter = self.painter_holder.painter
-        painter.draw_pen.setWidth(value)
-        painter.eraser_pen.setWidth(value)
         self.size_label.setText(str(value))
+        self.painter_holder.painter.change_pen_size(value)
 
     @QtCore.pyqtSlot()
     def on_save(self):

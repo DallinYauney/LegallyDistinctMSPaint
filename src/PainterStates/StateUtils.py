@@ -32,7 +32,19 @@ def scroll(amount: QPoint, controller):
 
 # def zoom(event: QWheelEvent, inputs: InputTracker, controller):
 def zoom(event: QWheelEvent, inputs: InputTracker, controller):
-    print("zoooOOOOM")
+    current_pen_size = controller.painter.draw_pen.width()
+    scroll_direction_up = event.angleDelta().y() > 0
+    PEN_SIZE_DELTA = 2
+    size_modifier = PEN_SIZE_DELTA if scroll_direction_up else -PEN_SIZE_DELTA
+    new_pen_size = current_pen_size + size_modifier
+
+    PEN_MIN_SIZE = controller.parent.slider.minimum()
+    PEN_MAX_SIZE = controller.parent.slider.maximum()
+    if new_pen_size < PEN_MIN_SIZE: new_pen_size = PEN_MIN_SIZE
+    if new_pen_size > PEN_MAX_SIZE: new_pen_size = PEN_MAX_SIZE
+
+    controller.parent.slider.setValue(new_pen_size)
+    controller.parent.change_pen_size(new_pen_size)
 
 def scroll_or_zoom(event: QWheelEvent, inputs: InputTracker, controller):
     # from https://doc.qt.io/qt-6/qwheelevent.html#pixelDelta
