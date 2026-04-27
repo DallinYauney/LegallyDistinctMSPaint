@@ -411,7 +411,7 @@ class MainWindow(QMainWindow):
         # Slider
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(1)
-        self.slider.setMaximum(25)
+        self.slider.setMaximum(50)
         self.slider.setValue(10)
 
         # Couldn't be like the other buttons because QSlider is a widget
