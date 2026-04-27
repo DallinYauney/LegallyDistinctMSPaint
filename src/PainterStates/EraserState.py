@@ -40,12 +40,13 @@ class EraserState:
                 self.controller.change_state(PanState.PanState, 2)
             case Qt.MouseButton.RightButton:
                self.is_rect_erasing = True
+               self.can_graduate = False
     
     def mouse_move(self, event: QMouseEvent):
-        if self.is_erasing:
-            erase(event, self.inputs, self.controller)
-        elif self.is_rect_erasing:
+        if self.is_rect_erasing:
             erase_rect(event, self.inputs, self.controller)
+        elif self.is_erasing:
+            erase(event, self.inputs, self.controller)
 
     def mouse_up(self, event: QMouseEvent):
         match event.button():
@@ -58,6 +59,7 @@ class EraserState:
                     self.controller.revert_state()
                 else:
                     self.is_rect_erasing = False
+                    self.is_erasing = False
     
     def key_down(self, event: QKeyEvent):
         match event.key():
