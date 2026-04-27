@@ -31,7 +31,6 @@ def erase_rect(event: QMouseEvent, inputs: InputTracker, controller):
     end_corner = event.position().toPoint() - displacement
     rect_to_erase = QRect(start_corner, end_corner)
 
-    print(f"erasing at {rect_to_erase}")
     controller.painter.erase_rect(rect_to_erase)
 
 def pan(event: QMouseEvent, inputs: InputTracker, controller):
