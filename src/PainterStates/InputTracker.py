@@ -17,6 +17,14 @@ class InputTracker:
         self.prev_mouse_pos = None
         # self.mouse_pos = None
         # self.pressed_keys = set()
-    
+        self.mouse_down_pos = None
+
     def new_mouse_pos(self, event):
         self.prev_mouse_pos = event.position().toPoint()
+    
+    def mouse_down(self, event):
+        self.prev_mouse_pos = event.position().toPoint()
+        self.mouse_down_pos = event.position().toPoint()
+    
+    def mouse_up(self):
+        self.mouse_down_pos = None

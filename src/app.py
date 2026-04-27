@@ -25,6 +25,7 @@ from PyQt6.QtCore import (
     QPoint,
     QMargins,
     QSize,
+    QRect,
 )
 from PyQt6.QtGui import (
     QMouseEvent,
@@ -33,6 +34,7 @@ from PyQt6.QtGui import (
     QPaintEvent,
     QImage,
     QPen,
+    QBrush,
     QAction,
     QPainter,
     QColor,
@@ -71,6 +73,8 @@ class PainterWidget(QWidget):
 
         self.eraser_pen = QPen(self.draw_pen)
         self.eraser_pen.setColor(Qt.GlobalColor.white)
+
+        self.eraser_brush = QBrush(Qt.GlobalColor.white)
 
     def paintEvent(self, event: QPaintEvent):
         """Override method from QWidget
@@ -117,7 +121,14 @@ class PainterWidget(QWidget):
 
         self.update()
     
-
+    def erase_rect(self, rect: QRect):
+        with QPainter(self.pixmap) as painter:
+            painter.setPen(self.eraser_pen)
+            painter.setBrush(self.eraser_brush)
+            painter.drawRect(rect)
+        
+        self.update()
+    
 class PainterController(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -149,7 +160,7 @@ class PainterController(QWidget):
         """passes mouse button press events to the active state"""
         self.state.mouse_down(event)
 
-        self.inputs.new_mouse_pos(event)
+        self.inputs.mouse_down(event)
         return super().mousePressEvent(event)
     
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -162,6 +173,8 @@ class PainterController(QWidget):
     def mouseReleaseEvent(self, event: QMouseEvent):
         """passes mouse button release events to the active state"""
         self.state.mouse_up(event)
+
+        self.inputs.mouse_up()
         return super().mousePressEvent(event)
     
     def keyPressEvent(self, event: QKeyEvent):
