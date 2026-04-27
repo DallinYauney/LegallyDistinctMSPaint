@@ -1,4 +1,4 @@
-from .StateUtils import draw,erase,pan,scroll_or_zoom
+from .StateUtils import draw,erase,pan,scroll_or_zoom,expand
 from .InputTracker import InputTracker
 from . import PanState
 from . import EraserState
@@ -29,6 +29,7 @@ class DrawState:
         match event.button():
             case Qt.MouseButton.LeftButton:
                 self.is_painting = True
+                expand(None, self.inputs, self.controller)
             case Qt.MouseButton.MiddleButton:
                 self.controller.change_state(PanState.PanState, 2)
             case Qt.MouseButton.RightButton:
