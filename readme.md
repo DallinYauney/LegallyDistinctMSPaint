@@ -4,6 +4,10 @@ Provide users with a cross-platform, infinite canvas bitmap editor
 People who want an infinite canvas bitmap editor, or infinite canvas doodlers  
 Do paint stuff  
 
+## Build instructions
+
+Install the dependencies from `requirements.txt` (preferably in a virtual environment), and run the app from the root folder with `python src/app.py`
+
 ## Functional Requirements
 
 Paint on canvas using brush  
